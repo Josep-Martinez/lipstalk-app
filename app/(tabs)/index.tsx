@@ -19,6 +19,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const progressAnimation = useRef(new Animated.Value(0)).current;
   const [textoVisible, setTextoVisible] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -320,8 +321,20 @@ const styles = StyleSheet.create({
   },
   flipButton: {
     position: 'absolute',
-    bottom: 25, // Lo mueve abajo
-    right: 20,  // Ajusta para que esté al lado del botón de grabación
+    bottom: 30, // Lo mueve abajo
+    right: 40,  // Ajusta para que esté al lado del botón de grabación
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  flashButton: {
+    position: 'absolute',
+    bottom: 30, // Misma altura que el botón de cambiar cámara
+    left: 40,   // Opuesto a `right: 40` del botón de cambiar cámara
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     width: 50,
     height: 50,
