@@ -1,20 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  Dimensions, 
-  StatusBar, 
-  Platform, 
-  Text,
-  Animated 
-} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, Dimensions, StatusBar, Platform, Text,Animated} from 'react-native';
 import { Camera, CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Ellipse } from 'react-native-svg';
+import Texto from "../../components/texto";
 
 const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
 
@@ -27,6 +18,7 @@ export default function HomeScreen() {
   const cameraRef = useRef<CameraView | null>(null);
   const navigation = useNavigation();
   const progressAnimation = useRef(new Animated.Value(0)).current;
+  const [textoVisible, setTextoVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -107,14 +99,7 @@ export default function HomeScreen() {
   
       await FileSystem.moveAsync({ from: video.uri, to: newPath });
   
-      Alert.alert(
-        "Video guardado",
-        `El video se ha guardado correctamente.\n\nNombre: ${filename}`,
-        [
-          { text: "OK" },
-          { text: "Ver videos", onPress: () => navigation.navigate('videos' as never) }
-        ]
-      );
+      setTextoVisible(true);
     } catch (error) {
       console.error("❌ Error al grabar video:", error);
       Alert.alert("Error", "No se pudo grabar el video.");
@@ -174,7 +159,7 @@ export default function HomeScreen() {
               facing={facing} 
               mode="video"
             />
-            
+            <Texto visible={textoVisible} onClose={() => setTextoVisible(false)} />
             {/* Guía oval para posicionar el rostro - ahora más arriba */}
             <View style={styles.faceGuideContainer} pointerEvents="none">
               <Svg height="100%" width="100%" viewBox={`0 0 ${windowWidth} ${cameraHeight}`}>
@@ -209,10 +194,7 @@ export default function HomeScreen() {
               </View>
             )}
             
-            {/* Botón para cambiar de cámara */}
-            <TouchableOpacity style={styles.flipButton} onPress={toggleCamera}>
-              <Ionicons name="camera-reverse" size={24} color="white" />
-            </TouchableOpacity>
+
             
             {/* Indicador de grabación */}
             {isRecording && (
@@ -242,6 +224,10 @@ export default function HomeScreen() {
 
       {/* Controles de la cámara */}
       <View style={styles.controlsContainer}>
+                    {/* Botón para cambiar de cámara */}
+                    <TouchableOpacity style={styles.flipButton} onPress={toggleCamera}>
+              <Ionicons name="camera-reverse" size={24} color="white" />
+            </TouchableOpacity>
         <View style={styles.emptySpace} />
         
         {/* Botón de grabación mejorado */}
@@ -334,8 +320,8 @@ const styles = StyleSheet.create({
   },
   flipButton: {
     position: 'absolute',
-    top: 20,
-    right: 20,
+    bottom: 25, // Lo mueve abajo
+    right: 20,  // Ajusta para que esté al lado del botón de grabación
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     width: 50,
     height: 50,
