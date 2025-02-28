@@ -1,45 +1,86 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
-
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { Tabs } from "expo-router";
+import { Home, MessageSquare, Video } from "lucide-react-native";
+import { View, StyleSheet, Image } from "react-native";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
+        headerStyle: {
+          backgroundColor: "#e0cfbe",
+        },
+        headerTintColor: "#fff",
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          borderTopWidth: 1,
+          borderTopColor: "#e2e8f0",
+        },
+        tabBarActiveTintColor: "#e0cfbe",
+        tabBarInactiveTintColor: "#64748b",
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="recording"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Grabaciones",
+          headerTitle: "Grabaciones",
+          tabBarIcon: ({ color, size }) => (
+            <MessageSquare size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="index"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Casa",
+          headerTitle: "Casa",
+          headerRight: () => (
+            <View style={styles.headerRight}>
+              <Image
+                source={require("../../assets/images/lipstalk-logo.png")}
+                style={styles.headerIcon}
+              />
+            </View>
+          ),
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="videos"
+        options={{
+          title: 'Video',
+          headerTitle: 'Video',
+          tabBarIcon: ({ color, size }) => <Video size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="about"
+        options={{
+          title: "LipsTalk",
+          headerTitle: "LipsTalk",
+          tabBarIcon: ({ color, size }) => (
+            <Image
+              source={require("../../assets/images/lipstalk-logo.png")}
+              style={{
+                width: size,
+                height: size,
+                tintColor: color, // Esto permite que la imagen cambie de color según el estado activo/inactivo
+              }}
+            />
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerRight: {
+    marginRight: 15,
+  },
+  headerIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "#fff",
+  },
+});
