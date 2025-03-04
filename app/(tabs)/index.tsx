@@ -23,21 +23,21 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Ellipse } from "react-native-svg";
 import Texto from "../../components/texto";
 import axios from "axios";
-import sha1 from 'js-sha1';
+import sha1 from "js-sha1";
 
 const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
 
 export default function HomeScreen() {
-  const [facing, setFacing] = useState<CameraType>("back");
-  const [permission, requestPermission] = useCameraPermissions();
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
+  const [facing, setFacing] = useState<CameraType>("back"); // Estado para controlar la cámara frontal o trasera
+  const [permission, requestPermission] = useCameraPermissions(); // Permisos para la cámara y el micrófono
+  const [isRecording, setIsRecording] = useState(false); // Estado para saber si se está grabando
+  const [recordingTime, setRecordingTime] = useState(0); // Tiempo de grabación
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
-  );
-  const cameraRef = useRef<CameraView | null>(null);
-  const navigation = useNavigation();
-  const progressAnimation = useRef(new Animated.Value(0)).current;
+  ); // Intervalo del temporizador
+  const cameraRef = useRef<CameraView | null>(null); // Referencia a la cámara
+  const navigation = useNavigation(); // Navegación
+  const progressAnimation = useRef(new Animated.Value(0)).current; // Animación de la barra de progreso
   const [textoVisible, setTextoVisible] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
   const CLOUDINARY_URL =
@@ -48,6 +48,7 @@ export default function HomeScreen() {
   const CLOUDINARY_CLOUD_NAME = "dzd2vbxlk";
   const [isLoading, setIsLoading] = useState(false);
 
+  // Solicitar permisos de cámara y micrófono al iniciar la aplicación
   useEffect(() => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -71,13 +72,14 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // Detener grabación cuando el tiempo máximo se alcanza
   useEffect(() => {
-    // Cuando el tiempo de grabación llega al máximo, detener la grabación
     if (recordingTime >= MAX_RECORDING_TIME && isRecording) {
       stopRecording();
     }
   }, [recordingTime, isRecording]);
 
+  // Crear directorio para almacenar videos localmente
   const ensureDirectoryExists = async () => {
     const videosDirectory = FileSystem.documentDirectory + "videos/";
     const dirInfo = await FileSystem.getInfoAsync(videosDirectory);
@@ -88,6 +90,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Formatear el tiempo en minutos y segundos
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -96,6 +99,7 @@ export default function HomeScreen() {
       .padStart(2, "0")}`;
   };
 
+  // Subir video a Cloudinary y recortarlo
   const uploadToCloudinary = async (fileUri) => {
     try {
       const videoData = await FileSystem.readAsStringAsync(fileUri, {
@@ -111,7 +115,7 @@ export default function HomeScreen() {
 
       console.log("📹 Video subido a Cloudinary:", response.data.secure_url);
 
-      // Recortar solo el rectángulo negro
+      // Recortar video usando URL de transformación de Cloudinary
       const croppedUrl = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/c_crop,w_500,h_300,x_270,y_915/${publicId}.mp4`;
       console.log("📹 URL del video recortado:", croppedUrl);
 
@@ -122,6 +126,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Guardar video recortado localmente
   const saveCroppedVideoUrl = async (url) => {
     const videosDirectory = FileSystem.documentDirectory + "videos/";
 
@@ -145,6 +150,7 @@ export default function HomeScreen() {
     console.log("✅ Video recortado guardado:", uri);
   };
 
+  // Eliminar video de Cloudinary para no saturar el almacenamiento
   const deleteFromCloudinary = async (publicId) => {
     try {
       const timestamp = Math.floor(Date.now() / 1000);
@@ -249,6 +255,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Cambiar entre cámara frontal y trasera
   const toggleCamera = () => {
     setFacing((current) => (current === "back" ? "front" : "back"));
   };
@@ -264,16 +271,20 @@ export default function HomeScreen() {
     windowHeight - tabBarHeight - headerHeight - statusBarHeight;
 
   return (
+    // Contenedor principal de la pantalla
     <View style={styles.container}>
+      {/* Contenedor para la cámara */}
       <View style={[styles.cameraContainer, { height: cameraHeight }]}>
         {permission?.granted ? (
           <>
+            {/* Vista de la cámara */}
             <CameraView
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
               mode="video"
             />
+            {/* Componente Texto para mostrar la transcripción o mensajes */}
             <Texto
               visible={textoVisible}
               onClose={() => setTextoVisible(false)}
@@ -338,6 +349,7 @@ export default function HomeScreen() {
             )}
           </>
         ) : (
+          // Muestra mensaje de advertencia si no hay permisos para la cámara
           <View style={styles.permissionWarning}>
             <Text style={{ color: "white", textAlign: "center", padding: 20 }}>
               Se requiere permiso de cámara para usar esta función. Por favor,
@@ -361,7 +373,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
         <View style={styles.emptySpace} />
 
-        {/* Botón de grabación mejorado */}
+        {/* Botón de grabación */}
         <TouchableOpacity
           style={[
             styles.recordButton,

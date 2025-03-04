@@ -24,6 +24,7 @@ export default function VideoPlayerScreen() {
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Carga los videos cada vez que se enfoca la pantalla
   useFocusEffect(
     useCallback(() => {
       loadVideos();
@@ -58,6 +59,7 @@ export default function VideoPlayerScreen() {
     }
   };
 
+  // Carga los videos desde el directorio local
   const loadVideos = async () => {
     try {
       setLoading(true);
@@ -78,6 +80,7 @@ export default function VideoPlayerScreen() {
     }
   };
 
+  // Elimina un video seleccionado
   const deleteVideo = async (videoPath: string) => {
     Alert.alert(
       "Eliminar Video",
@@ -107,6 +110,7 @@ export default function VideoPlayerScreen() {
     );
   };
 
+  // Estado y funciones para manejar la reproducción de videos
   const [isPlaying, setIsPlaying] = useState(false);
 
   const player = useVideoPlayer(selectedVideo || "", (player) => {
@@ -128,16 +132,19 @@ export default function VideoPlayerScreen() {
     };
   }, [player]);
 
+  // Alternar pantalla completa
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  // Formatea el nombre del archivo para mostrarlo sin extensión ni guiones
   const formatFileName = (path: string) => {
     const fileName = path.split("/").pop() || "";
     // Eliminar la extensión y reemplazar guiones con espacios
     return fileName.replace(/\.[^/.]+$/, "").replace(/-/g, " ");
   };
 
+  // Renderiza cada tarjeta de video
   const videoCard = ({ item }: { item: string }) => (
     <TouchableOpacity
       style={styles.videoCard}

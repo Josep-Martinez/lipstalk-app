@@ -2,22 +2,34 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { X } from "lucide-react-native";
 
-const Texto = ({ visible, onClose, generatedText = "Aquí saldrá el texto traducido" }) => {
-  if (!visible) return null;
+const Texto = ({
+  visible,
+  onClose,
+  generatedText = "Aquí saldrá el texto traducido",
+}) => {
+  // Componente funcional 'Texto' que recibe las siguientes props:
+  // - 'visible': booleano para mostrar el modal.
+  // - 'onClose': función para cerrar el modal.
+  // - 'generatedText': texto a mostrar (por defecto: "Aquí saldrá el texto traducido").
+
+  if (!visible) return null; // Si 'visible' es false, no muestra nada.
 
   return (
     <View style={styles.overlay}>
       <View style={styles.container}>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <X size={24} color="#fff" />
+          <X size={24} color="#fff" /> {/* Icono 'X' para cerrar el modal */}
         </TouchableOpacity>
-        <Text style={styles.title}>Texto Detectado</Text>
-        <Text style={styles.text}>{generatedText}</Text>
+        <Text style={styles.title}>Texto Detectado</Text>{" "}
+        {/* Título del modal */}
+        <Text style={styles.text}>{generatedText}</Text>{" "}
+        {/* Muestra el texto traducido */}
       </View>
     </View>
   );
 };
 
+// Define los estilos para el componente 'Texto'
 const styles = StyleSheet.create({
   overlay: {
     position: "absolute",
@@ -55,4 +67,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Texto;
+export default Texto; // Exporta el componente 'Texto' para ser usado en otros archivos.
