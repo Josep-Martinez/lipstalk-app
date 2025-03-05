@@ -6,14 +6,7 @@ const Texto = ({
   visible,
   onClose,
   generatedText = "Aquí saldrá el texto traducido",
-}) => {
-  // Componente funcional 'Texto' que recibe las siguientes props:
-  // - 'visible': booleano para mostrar el modal.
-  // - 'onClose': función para cerrar el modal.
-  // - 'generatedText': texto a mostrar (por defecto: "Aquí saldrá el texto traducido").
-
-  if (!visible) return null; // Si 'visible' es false, no muestra nada.
-
+}) => { if (!visible) return null; // Si 'visible' es false, no muestra nada.
   return (
     <View style={styles.overlay}>
       <View style={styles.container}>
