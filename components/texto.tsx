@@ -6,17 +6,18 @@ const Texto = ({
   visible,
   onClose,
   generatedText = "Aquí saldrá el texto traducido",
-}) => { if (!visible) return null; // Si 'visible' es false, no muestra nada.
+}) => {
+  if (!visible) return null; // Si 'visible' es false, no muestra nada.
   return (
     <View style={styles.overlay}>
       <View style={styles.container}>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <X size={24} color="#fff" /> {/* Icono 'X' para cerrar el modal */}
+          <Text> {/* ✅ Envolvemos el icono en <Text> */}
+            <X size={24} color="#fff" />
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Texto Detectado</Text>{" "}
-        {/* Título del modal */}
-        <Text style={styles.text}>{generatedText}</Text>{" "}
-        {/* Muestra el texto traducido */}
+        <Text style={styles.title}>Texto Detectado</Text>
+        <Text style={styles.text}>{generatedText || "Texto no disponible"}</Text>
       </View>
     </View>
   );
