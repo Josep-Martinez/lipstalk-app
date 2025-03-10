@@ -10,6 +10,7 @@ import {
   Text,
   Animated,
   ActivityIndicator,
+  DeviceEventEmitter,
 } from "react-native";
 import {
   Camera,
@@ -18,16 +19,17 @@ import {
   useCameraPermissions,
 } from "expo-camera";
 import * as FileSystem from "expo-file-system";
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Ellipse } from "react-native-svg";
 import Texto from "../../components/texto";
 import axios from "axios";
 import sha1 from "js-sha1";
+  import NetInfo from "@react-native-community/netinfo";
 
-const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
 
 export default function HomeScreen() {
+  const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
   const [facing, setFacing] = useState<CameraType>("back"); // Estado para controlar la cámara frontal o trasera
   const [permission, requestPermission] = useCameraPermissions(); // Permisos para la cámara y el micrófono
   const [isRecording, setIsRecording] = useState(false); // Estado para saber si se está grabando
@@ -47,6 +49,12 @@ export default function HomeScreen() {
   const CLOUDINARY_PRESET = "lipstalk"; // Crea un preset "Unsigned" en Cloudinary
   const CLOUDINARY_CLOUD_NAME = "dzd2vbxlk";
   const [isLoading, setIsLoading] = useState(false);
+  const [transcriptionText, setTranscriptionText] = useState("");
+  const TRANSCRIPTIONS_FILE = FileSystem.documentDirectory + "transcriptions.json";
+
+NetInfo.fetch().then(state => {
+  console.log("📡 Estado de Internet:", state.isConnected);
+});
 
   // Solicitar permisos de cámara y micrófono al iniciar la aplicación
   useEffect(() => {
@@ -90,6 +98,43 @@ export default function HomeScreen() {
     }
   };
 
+  // Guardar la transcripción localmente sin cambiar de ventana
+  const handleSaveText = async (text) => {
+    setTranscriptionText(text);
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(TRANSCRIPTIONS_FILE);
+      let existingTranscriptions = [];
+      if (fileInfo.exists) {
+        const content = await FileSystem.readAsStringAsync(TRANSCRIPTIONS_FILE);
+        existingTranscriptions = JSON.parse(content);
+      }
+  
+      const now = new Date();
+      const formattedDate = `${now.getDate().toString().padStart(2, "0")}-${(now.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${now.getFullYear()}_${now.getHours().toString().padStart(2, "0")}:${now
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+  
+      const newTranscription = { date: formattedDate, text };
+      const updatedTranscriptions = [newTranscription, ...existingTranscriptions];
+  
+      await FileSystem.writeAsStringAsync(
+        TRANSCRIPTIONS_FILE,
+        JSON.stringify(updatedTranscriptions)
+      );
+  
+      // 🆕 Emitir evento personalizado
+      DeviceEventEmitter.emit("transcriptionSaved");
+  
+      console.log("✅ Transcripción guardada:", newTranscription);
+    } catch (error) {
+      console.error("Error guardando transcripción:", error);
+      setIsLoading(false);
+    }
+  };
+
   // Formatear el tiempo en minutos y segundos
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -105,21 +150,19 @@ export default function HomeScreen() {
       const videoData = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-
+  
       const formData = new FormData();
       formData.append("file", `data:video/mp4;base64,${videoData}`);
       formData.append("upload_preset", CLOUDINARY_PRESET);
-
-      const response = await axios.post(CLOUDINARY_URL, formData);
-      const publicId = response.data.public_id;
-
+  
+      const response = await axios.post("https://api.cloudinary.com/v1_1/dzd2vbxlk/video/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+  
       console.log("📹 Video subido a Cloudinary:", response.data.secure_url);
-
-      // Recortar video usando URL de transformación de Cloudinary
-      const croppedUrl = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/c_crop,w_500,h_300,x_270,y_915/${publicId}.mp4`;
-      console.log("📹 URL del video recortado:", croppedUrl);
-
-      return croppedUrl;
+      return response.data.secure_url;
     } catch (error) {
       console.error("❌ Error subiendo video a Cloudinary:", error);
       throw error;
@@ -178,6 +221,7 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error("❌ Error eliminando video de Cloudinary:", error);
+      setIsLoading(false);
     }
   };
 
@@ -206,6 +250,7 @@ export default function HomeScreen() {
       let video = await cameraRef.current.recordAsync();
       if (!video?.uri) {
         throw new Error("No se pudo obtener la URI del video.");
+        setIsLoading(false);
       }
 
       console.log("✅ Video grabado:", video.uri);
@@ -222,6 +267,7 @@ export default function HomeScreen() {
       setTextoVisible(true);
     } catch (error) {
       console.error("❌ Error:", error);
+      setIsLoading(false);
       Alert.alert("Error", "No se pudo grabar o subir el video.");
     } finally {
       if (timerInterval) clearInterval(timerInterval);
@@ -241,6 +287,7 @@ export default function HomeScreen() {
           cameraRef.current?.stopRecording();
           console.log("📌 stopRecording() ejecutado.");
         } catch (error) {
+          setIsLoading(false);
           console.error("❌ Error al detener la grabación:", error);
         }
       }, 500);
@@ -288,6 +335,7 @@ export default function HomeScreen() {
             <Texto
               visible={textoVisible}
               onClose={() => setTextoVisible(false)}
+              onSaveText={handleSaveText}  // Guardar el texto cuando se muestre
             />
             {/* Aquí se muestra la animación de cargando */}
             {isLoading && (
