@@ -137,11 +137,11 @@ export default function VideoPlayerScreen() {
     setIsFullscreen(!isFullscreen);
   };
 
-  // Formatea el nombre del archivo para mostrarlo sin extensión ni guiones
+  // Formatea el nombre del archivo para mostrarlo sin extensión
   const formatFileName = (path: string) => {
     const fileName = path.split("/").pop() || "";
-    // Eliminar la extensión y reemplazar guiones con espacios
-    return fileName.replace(/\.[^/.]+$/, "").replace(/-/g, " ");
+    // Eliminar solo la extensión, mantener los guiones
+    return fileName.replace(/\.[^/.]+$/, "");
   };
 
   // Renderiza cada tarjeta de video

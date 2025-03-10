@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { X } from "lucide-react-native";
 
@@ -6,13 +6,22 @@ const Texto = ({
   visible,
   onClose,
   generatedText = "Aquí saldrá el texto traducido",
+  onSaveText,  // Nueva prop para guardar el texto
 }) => {
-  if (!visible) return null; // Si 'visible' es false, no muestra nada.
+  // Guardar el texto cuando se muestra
+  useEffect(() => {
+    if (visible && onSaveText) {
+      onSaveText(generatedText);  // Guardar el texto real
+    }
+  }, [visible, generatedText]);
+
+  if (!visible) return null;
+
   return (
     <View style={styles.overlay}>
       <View style={styles.container}>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text> {/* ✅ Envolvemos el icono en <Text> */}
+          <Text>
             <X size={24} color="#fff" />
           </Text>
         </TouchableOpacity>
@@ -23,7 +32,6 @@ const Texto = ({
   );
 };
 
-// Define los estilos para el componente 'Texto'
 const styles = StyleSheet.create({
   overlay: {
     position: "absolute",
@@ -61,4 +69,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Texto; // Exporta el componente 'Texto' para ser usado en otros archivos.
+export default Texto;
