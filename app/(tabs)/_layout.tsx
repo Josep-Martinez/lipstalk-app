@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, MessageSquare, Video } from "lucide-react-native";
+import { Home, MessageSquare, Video, InfoIcon } from "lucide-react-native";
 import { View, StyleSheet, Image } from "react-native";
 
 export default function TabLayout() {
@@ -35,18 +35,18 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Casa",
-          headerTitle: "Casa",
-          headerRight: () => (
-            <View style={styles.headerRight}>
-              {/* Logo en el header derecho */}
-              <Image
-                source={require("../../assets/images/lipstalk-logo.png")}
-                style={styles.headerIcon}
-              />
-            </View>
+          title: "LipsTalk",
+          headerTitle: "LipsTalk",
+          tabBarIcon: ({ color, size }) => (
+            <Image
+              source={require("../../assets/images/lipstalk-logo.png")}
+              style={{
+                width: size,
+                height: size,
+                tintColor: color, // Permite que el logo cambie de color según el estado activo/inactivo.
+              }}
+            />
           ),
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
 
@@ -64,18 +64,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="about"
         options={{
-          title: "LipsTalk",
-          headerTitle: "LipsTalk",
-          tabBarIcon: ({ color, size }) => (
-            <Image
-              source={require("../../assets/images/lipstalk-logo.png")}
-              style={{
-                width: size,
-                height: size,
-                tintColor: color, // Permite que el logo cambie de color según el estado activo/inactivo.
-              }}
-            />
-          ),
+          title: "Info",
+          headerTitle: "Info",
+          tabBarIcon: ({ color, size }) => <InfoIcon size={size} color={color} />,
         }}
       />
     </Tabs>
