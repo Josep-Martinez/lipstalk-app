@@ -25,8 +25,7 @@ import Svg, { Ellipse } from "react-native-svg";
 import Texto from "../../components/texto";
 import axios from "axios";
 import sha1 from "js-sha1";
-  import NetInfo from "@react-native-community/netinfo";
-
+import NetInfo from "@react-native-community/netinfo";
 
 export default function HomeScreen() {
   const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
@@ -50,11 +49,9 @@ export default function HomeScreen() {
   const CLOUDINARY_CLOUD_NAME = "dzd2vbxlk";
   const [isLoading, setIsLoading] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState("");
-  const TRANSCRIPTIONS_FILE = FileSystem.documentDirectory + "transcriptions.json";
-
-NetInfo.fetch().then(state => {
-  console.log("📡 Estado de Internet:", state.isConnected);
-});
+  const TRANSCRIPTIONS_FILE =
+    FileSystem.documentDirectory + "transcriptions.json";
+  const [showGuideMessage, setShowGuideMessage] = useState(true);
 
   // Solicitar permisos de cámara y micrófono al iniciar la aplicación
   useEffect(() => {
@@ -78,6 +75,15 @@ NetInfo.fetch().then(state => {
     return () => {
       if (timerInterval) clearInterval(timerInterval);
     };
+  }, []);
+
+  // Mensaje inicio para poner cara en el ovalo
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowGuideMessage(false);
+    }, 5000); // 5000 ms = 5 segundos
+
+    return () => clearTimeout(timer); // Limpiar el temporizador cuando el componente se desmonte
   }, []);
 
   // Detener grabación cuando el tiempo máximo se alcanza
@@ -108,26 +114,34 @@ NetInfo.fetch().then(state => {
         const content = await FileSystem.readAsStringAsync(TRANSCRIPTIONS_FILE);
         existingTranscriptions = JSON.parse(content);
       }
-  
+
       const now = new Date();
-      const formattedDate = `${now.getDate().toString().padStart(2, "0")}-${(now.getMonth() + 1)
+      const formattedDate = `${now.getDate().toString().padStart(2, "0")}-${(
+        now.getMonth() + 1
+      )
         .toString()
-        .padStart(2, "0")}-${now.getFullYear()}_${now.getHours().toString().padStart(2, "0")}:${now
-        .getMinutes()
+        .padStart(2, "0")}-${now.getFullYear()}_${now
+        .getHours()
         .toString()
-        .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-  
+        .padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now
+        .getSeconds()
+        .toString()
+        .padStart(2, "0")}`;
+
       const newTranscription = { date: formattedDate, text };
-      const updatedTranscriptions = [newTranscription, ...existingTranscriptions];
-  
+      const updatedTranscriptions = [
+        newTranscription,
+        ...existingTranscriptions,
+      ];
+
       await FileSystem.writeAsStringAsync(
         TRANSCRIPTIONS_FILE,
         JSON.stringify(updatedTranscriptions)
       );
-  
+
       // 🆕 Emitir evento personalizado
       DeviceEventEmitter.emit("transcriptionSaved");
-  
+
       console.log("✅ Transcripción guardada:", newTranscription);
     } catch (error) {
       console.error("Error guardando transcripción:", error);
@@ -150,17 +164,21 @@ NetInfo.fetch().then(state => {
       const videoData = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-  
+
       const formData = new FormData();
       formData.append("file", `data:video/mp4;base64,${videoData}`);
       formData.append("upload_preset", CLOUDINARY_PRESET);
-  
-      const response = await axios.post("https://api.cloudinary.com/v1_1/dzd2vbxlk/video/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-  
+
+      const response = await axios.post(
+        "https://api.cloudinary.com/v1_1/dzd2vbxlk/video/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
       console.log("📹 Video subido a Cloudinary:", response.data.secure_url);
       return response.data.secure_url;
     } catch (error) {
@@ -335,7 +353,7 @@ NetInfo.fetch().then(state => {
             <Texto
               visible={textoVisible}
               onClose={() => setTextoVisible(false)}
-              onSaveText={handleSaveText}  // Guardar el texto cuando se muestre
+              onSaveText={handleSaveText} // Guardar el texto cuando se muestre
             />
             {/* Aquí se muestra la animación de cargando */}
             {isLoading && (
@@ -357,7 +375,7 @@ NetInfo.fetch().then(state => {
               >
                 <Ellipse
                   cx={windowWidth / 2}
-                  cy={cameraHeight * 0.4} // Movido más arriba (antes era 0.5)
+                  cy={cameraHeight * 0.4}
                   rx={windowWidth * 0.35}
                   ry={cameraHeight * 0.25}
                   stroke="white"
@@ -366,6 +384,12 @@ NetInfo.fetch().then(state => {
                   fill="transparent"
                 />
               </Svg>
+              {showGuideMessage && (
+                <Text style={styles.guideText}>
+                  Coloca el rostro dentro de la figura para el correcto
+                  funcionamiento
+                </Text>
+              )}
               {/* <Text style={styles.guideText}>Coloca tu rostro dentro del óvalo</Text> */}
             </View>
 
@@ -619,11 +643,12 @@ const styles = StyleSheet.create({
     color: "white",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 50,
     borderRadius: 20,
     position: "absolute",
-    bottom: 100,
+    bottom: 150,
     textAlign: "center",
     fontWeight: "bold",
+    fontSize: 14, // Tamaño de fuente ajustado
   },
 });
