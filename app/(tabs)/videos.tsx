@@ -24,27 +24,26 @@ export default function VideoPlayerScreen() {
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Carga los videos cada vez que se enfoca la pantalla
   useFocusEffect(
     useCallback(() => {
       loadVideos();
     }, [])
   );
 
-  // 📌 Función para solicitar permisos y guardar el video
+  // Solicitar permisos y guardar el video
   const saveVideoToFiles = async (videoUri: string) => {
     try {
-      // 📌 Crear una ruta accesible desde la app Archivos
+      // Crear una ruta
       const fileName = videoUri.split("/").pop();
       const destinationUri = FileSystem.documentDirectory + fileName;
 
-      // 📌 Copiar el video a la ruta accesible
+      // Copiar el video
       await FileSystem.copyAsync({
         from: videoUri,
         to: destinationUri,
       });
 
-      // 📌 Usar Sharing para abrir la app Archivos y guardar el archivo
+      // Guardar archivo
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(destinationUri);
       } else {
@@ -80,7 +79,7 @@ export default function VideoPlayerScreen() {
     }
   };
 
-  // Elimina un video seleccionado
+  // Elimina video seleccionado
   const deleteVideo = async (videoPath: string) => {
     Alert.alert(
       "Eliminar Video",
@@ -110,7 +109,7 @@ export default function VideoPlayerScreen() {
     );
   };
 
-  // Estado y funciones para manejar la reproducción de videos
+  // Reproducción de videos
   const [isPlaying, setIsPlaying] = useState(false);
 
   const player = useVideoPlayer(selectedVideo || "", (player) => {
@@ -121,8 +120,8 @@ export default function VideoPlayerScreen() {
     if (!player) return;
 
     const updatePlayState = (payload: any) => {
-      console.log("Evento playingChange:", payload); // Ver qué propiedades tiene
-      setIsPlaying(payload.isPlaying); // Usamos la propiedad correcta del payload
+      console.log("Evento playingChange:", payload); 
+      setIsPlaying(payload.isPlaying);
     };
 
     player.addListener("playingChange", updatePlayState);
@@ -132,19 +131,16 @@ export default function VideoPlayerScreen() {
     };
   }, [player]);
 
-  // Alternar pantalla completa
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
-  // Formatea el nombre del archivo para mostrarlo sin extensión
+  // Nombre archivo
   const formatFileName = (path: string) => {
     const fileName = path.split("/").pop() || "";
-    // Eliminar solo la extensión, mantener los guiones
     return fileName.replace(/\.[^/.]+$/, "");
   };
 
-  // Renderiza cada tarjeta de video
   const videoCard = ({ item }: { item: string }) => (
     <TouchableOpacity
       style={styles.videoCard}
@@ -170,7 +166,7 @@ export default function VideoPlayerScreen() {
         >
           <MaterialIcons name="delete" size={22} color="#FF5252" />
         </TouchableOpacity>
-        {/* 🆕 Botón para guardar en "Archivos" */}
+        {/* Botón para guardar en "Archivos" */}
         <TouchableOpacity
           style={styles.controlButton}
           onPress={() => selectedVideo && saveVideoToFiles(selectedVideo)}
@@ -185,7 +181,6 @@ export default function VideoPlayerScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Video List */}
       <FlatList
         data={videos}
         keyExtractor={(item) => item}
@@ -210,7 +205,7 @@ export default function VideoPlayerScreen() {
         }
       />
 
-      {/* Video Player */}
+      {/* Reproductor */}
       {selectedVideo && (
         <View
           style={[
@@ -225,7 +220,7 @@ export default function VideoPlayerScreen() {
             style={isFullscreen ? styles.fullscreenVideo : styles.video}
           />
 
-          {/* Player Controls */}
+          {/* Controles reporductor */}
           <View style={styles.controlsOverlay}>
             <TouchableOpacity
               style={styles.playButton}
@@ -270,8 +265,7 @@ export default function VideoPlayerScreen() {
                 >
                   <MaterialIcons name="delete" size={24} color="white" />
                 </TouchableOpacity>
-                {/* 🆕 Botón para descargar video */}
-                {/* 🆕 Botón para guardar en "Archivos" */}
+                {/* Botón para guardar en "Archivos" */}
                 <TouchableOpacity
                   style={styles.controlButton}
                   onPress={() =>
@@ -300,7 +294,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
-    paddingTop: 50, // Ajuste para compensar la eliminación del header
+    paddingTop: 50,
   },
   listContainer: {
     padding: 16,

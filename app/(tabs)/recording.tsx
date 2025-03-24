@@ -29,18 +29,15 @@ export default function RecordingScreen() {
   const [expandedTranscription, setExpandedTranscription] = useState(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   
-  // Estados para filtros
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Modal para el selector de rueda
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerType, setPickerType] = useState(null); // 'year', 'month' o 'day'
   const [tempPickerValue, setTempPickerValue] = useState(null);
 
-  // Modal para confirmación de eliminación
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [transcriptionToDelete, setTranscriptionToDelete] = useState(null);
 
@@ -101,7 +98,7 @@ export default function RecordingScreen() {
 
   const deleteTranscription = async (dateToDelete) => {
     try {
-      // Filtrar la transcripción a eliminar de ambos arrays
+      // Filtrar la transcripción
       const updatedTranscriptions = transcriptions.filter(
         item => item.date !== dateToDelete
       );
@@ -110,18 +107,15 @@ export default function RecordingScreen() {
       const saveSuccess = await saveTranscriptions(updatedTranscriptions);
       
       if (saveSuccess) {
-        // Actualizar el estado
         setTranscriptions(updatedTranscriptions);
         setFilteredTranscriptions(
           filteredTranscriptions.filter(item => item.date !== dateToDelete)
         );
         
-        // Cerrar expansión si estaba abierta
         if (expandedTranscription === dateToDelete) {
           setExpandedTranscription(null);
         }
         
-        // Mostrar confirmación
         if (Platform.OS === 'android') {
           ToastAndroid.show('Transcripción eliminada', ToastAndroid.SHORT);
         } else {
@@ -160,7 +154,7 @@ export default function RecordingScreen() {
     const timePart = parts[1] ? parts[1].replace("-", ":") : "";
     
     const day = datePart[0];
-    const month = months[parseInt(datePart[1])]; // Ajuste para el índice 0 de 'Todos'
+    const month = months[parseInt(datePart[1])];
     const year = datePart[2];
     
     return `${day} de ${month}, ${year} - ${timePart}`;
@@ -214,7 +208,7 @@ export default function RecordingScreen() {
     }
 
     setFilteredTranscriptions(filtered);
-    setShowFilters(false);  // 🆕 Cerrar filtro después de aplicar
+    setShowFilters(false); 
 
     fadeAnim.setValue(0);
     Animated.timing(fadeAnim, {
@@ -229,7 +223,7 @@ export default function RecordingScreen() {
     setSelectedMonth(null);
     setSelectedDay(null);
     setFilteredTranscriptions(transcriptions);
-    setShowFilters(false);  // 🆕 Cerrar filtro después de limpiar
+    setShowFilters(false); 
   };
 
   const toggleExpansion = (date) => {
@@ -250,16 +244,15 @@ export default function RecordingScreen() {
     }
   };
 
-  // Función modificada para incluir la fecha formateada en el texto compartido
+  // Formato de compartir la trancripcion
   const shareText = async (text, dateString) => {
     try {
-      // Formato esperado del dateString: "DD-MM-YYYY_HH-MM"
       const parts = dateString.split("_");
       const datePart = parts[0].split("-");
       
       const day = datePart[0];
       const monthIndex = parseInt(datePart[1]);
-      const month = months[monthIndex]; // Usar el array de meses ya definido
+      const month = months[monthIndex];
       const year = datePart[2];
       
       const formattedDate = `Texto transcrito el día ${day} del mes ${month} del año ${year}`;
@@ -786,7 +779,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
   },
-  // Estilos para el Modal de confirmación de eliminación
   deleteModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -853,7 +845,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontSize: 14,
   },
-  // Estilos para el Modal (Wheel Picker)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

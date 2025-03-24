@@ -29,23 +29,23 @@ import NetInfo from "@react-native-community/netinfo";
 
 export default function HomeScreen() {
   const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
-  const [facing, setFacing] = useState<CameraType>("back"); // Estado para controlar la cámara frontal o trasera
+  const [facing, setFacing] = useState<CameraType>("back"); // Cámara frontal o trasera
   const [permission, requestPermission] = useCameraPermissions(); // Permisos para la cámara y el micrófono
   const [isRecording, setIsRecording] = useState(false); // Estado para saber si se está grabando
   const [recordingTime, setRecordingTime] = useState(0); // Tiempo de grabación
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
   ); // Intervalo del temporizador
-  const cameraRef = useRef<CameraView | null>(null); // Referencia a la cámara
-  const navigation = useNavigation(); // Navegación
-  const progressAnimation = useRef(new Animated.Value(0)).current; // Animación de la barra de progreso
+  const cameraRef = useRef<CameraView | null>(null); 
+  const navigation = useNavigation(); 
+  const progressAnimation = useRef(new Animated.Value(0)).current; 
   const [textoVisible, setTextoVisible] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
   const CLOUDINARY_URL =
     "https://api.cloudinary.com/v1_1/dzd2vbxlk/video/upload";
   const CLOUDINARY_API_KEY = "859879863328536";
   const CLOUDINARY_API_SECRET = "OG8mhv-cnZU5316a9y0T2t2nK4o";
-  const CLOUDINARY_PRESET = "lipstalk"; // Crea un preset "Unsigned" en Cloudinary
+  const CLOUDINARY_PRESET = "lipstalk"; 
   const CLOUDINARY_CLOUD_NAME = "dzd2vbxlk";
   const [isLoading, setIsLoading] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState("");
@@ -81,12 +81,12 @@ export default function HomeScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowGuideMessage(false);
-    }, 5000); // 5000 ms = 5 segundos
+    }, 5000);
 
-    return () => clearTimeout(timer); // Limpiar el temporizador cuando el componente se desmonte
+    return () => clearTimeout(timer);
   }, []);
 
-  // Detener grabación cuando el tiempo máximo se alcanza
+  // Detener grabación por tiempo
   useEffect(() => {
     if (recordingTime >= MAX_RECORDING_TIME && isRecording) {
       stopRecording();
@@ -104,7 +104,7 @@ export default function HomeScreen() {
     }
   };
 
-  // Guardar la transcripción localmente sin cambiar de ventana
+  // Guardar la transcripción en local
   const handleSaveText = async (text) => {
     setTranscriptionText(text);
     try {
@@ -139,7 +139,6 @@ export default function HomeScreen() {
         JSON.stringify(updatedTranscriptions)
       );
 
-      // 🆕 Emitir evento personalizado
       DeviceEventEmitter.emit("transcriptionSaved");
 
       console.log("✅ Transcripción guardada:", newTranscription);
@@ -149,7 +148,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Formatear el tiempo en minutos y segundos
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -158,7 +156,7 @@ export default function HomeScreen() {
       .padStart(2, "0")}`;
   };
 
-  // Subir video a Cloudinary y recortarlo
+  // Subir video a Cloudinary
   const uploadToCloudinary = async (fileUri) => {
     try {
       const videoData = await FileSystem.readAsStringAsync(fileUri, {
@@ -187,7 +185,7 @@ export default function HomeScreen() {
     }
   };
 
-  // Guardar video recortado localmente
+  // Guardar video recortado en local
   const saveCroppedVideoUrl = async (url) => {
     const videosDirectory = FileSystem.documentDirectory + "videos/";
 
@@ -211,12 +209,12 @@ export default function HomeScreen() {
     console.log("✅ Video recortado guardado:", uri);
   };
 
-  // Eliminar video de Cloudinary para no saturar el almacenamiento
+  // Eliminar video de Cloudinary
   const deleteFromCloudinary = async (publicId) => {
     try {
       const timestamp = Math.floor(Date.now() / 1000);
       const stringToSign = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
-      const sha1 = require("js-sha1"); // Asegúrate de tener js-sha1 instalado
+      const sha1 = require("js-sha1");
       const signature = sha1(stringToSign);
 
       const response = await axios.post(
@@ -252,13 +250,13 @@ export default function HomeScreen() {
       setIsRecording(true);
       setRecordingTime(0);
 
-      // Iniciar temporizador
+      // Inicia temporizador
       const interval = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
       setTimerInterval(interval);
 
-      // Iniciar animación de la barra de progreso
+      // Iniciar animación de la barra
       Animated.timing(progressAnimation, {
         toValue: 1,
         duration: MAX_RECORDING_TIME * 1000,
@@ -272,16 +270,16 @@ export default function HomeScreen() {
       }
 
       console.log("✅ Video grabado:", video.uri);
-      setIsLoading(true); // Activa la animación al iniciar la subida
+      setIsLoading(true); // Activa animacion de cargando
       // Subir y recortar el video en Cloudinary
       const uploadedVideoUrl = await uploadToCloudinary(video.uri);
       console.log("✅ Video subido y recortado:", uploadedVideoUrl);
 
-      // Guardar la URL del video recortado localmente
+      // Guardar el video recortado localmente
       await saveCroppedVideoUrl(uploadedVideoUrl);
-      const publicId = uploadedVideoUrl.split("/").pop().split(".")[0]; // Extraer publicId
-      await deleteFromCloudinary(publicId); // Eliminar de Cloudinary
-      setIsLoading(false); // Desactiva la animación cuando termina
+      const publicId = uploadedVideoUrl.split("/").pop().split(".")[0];
+      await deleteFromCloudinary(publicId);
+      setIsLoading(false); // Desactiva la animación de cargando
       setTextoVisible(true);
     } catch (error) {
       console.error("❌ Error:", error);
@@ -315,7 +313,6 @@ export default function HomeScreen() {
       setIsRecording(false);
       console.log("🛑 Grabación detenida.");
 
-      // Detener la animación
       progressAnimation.stopAnimation();
     }
   };
@@ -325,7 +322,6 @@ export default function HomeScreen() {
     setFacing((current) => (current === "back" ? "front" : "back"));
   };
 
-  // Calcular altura de la cámara para que no quede oculta
   const windowHeight = Dimensions.get("window").height;
   const windowWidth = Dimensions.get("window").width;
   const tabBarHeight = 50;
@@ -342,20 +338,20 @@ export default function HomeScreen() {
       <View style={[styles.cameraContainer, { height: cameraHeight }]}>
         {permission?.granted ? (
           <>
-            {/* Vista de la cámara */}
+            {/* Cámara */}
             <CameraView
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
               mode="video"
             />
-            {/* Componente Texto para mostrar la transcripción o mensajes */}
+            {/* Mostrar la transcripción*/}
             <Texto
               visible={textoVisible}
               onClose={() => setTextoVisible(false)}
-              onSaveText={handleSaveText} // Guardar el texto cuando se muestre
+              onSaveText={handleSaveText}
             />
-            {/* Aquí se muestra la animación de cargando */}
+            {/* Animación de cargando */}
             {isLoading && (
               <View style={styles.loadingOverlay}>
                 <View style={styles.loadingBox}>
@@ -366,7 +362,7 @@ export default function HomeScreen() {
                 </View>
               </View>
             )}
-            {/* Guía oval para posicionar el rostro - ahora más arriba */}
+            {/* Posicion Ovalo */}
             <View style={styles.faceGuideContainer} pointerEvents="none">
               <Svg
                 height="100%"
@@ -649,6 +645,6 @@ const styles = StyleSheet.create({
     bottom: 150,
     textAlign: "center",
     fontWeight: "bold",
-    fontSize: 14, // Tamaño de fuente ajustado
+    fontSize: 14, 
   },
 });

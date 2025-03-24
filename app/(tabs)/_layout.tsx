@@ -7,31 +7,31 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerStyle: {
-          backgroundColor: "#e0cfbe", // Fondo del header en color personalizado.
+          backgroundColor: "#e0cfbe", // Fondo del header
         },
-        headerTintColor: "#fff", // Color del texto en el header.
+        headerTintColor: "#fff", // Color del texto header
         tabBarStyle: {
-          backgroundColor: "#fff", // Fondo de la barra de pestañas.
-          borderTopWidth: 1, // Borde superior de la barra.
-          borderTopColor: "#e2e8f0", // Color del borde superior.
+          backgroundColor: "#fff", // Fondo de la barra de abajo
+          borderTopWidth: 1, // Borde superior de la barra
+          borderTopColor: "#e2e8f0", // Color del borde 
         },
-        tabBarActiveTintColor: "#e0cfbe", // Color del icono activo.
-        tabBarInactiveTintColor: "#64748b", // Color del icono inactivo.
+        tabBarActiveTintColor: "#e0cfbe", // Color del icono pulsado
+        tabBarInactiveTintColor: "#64748b", // Color del icono no pulsado
       }}
     >
       {/* Pestaña de grabaciones */}
       <Tabs.Screen
         name="recording"
         options={{
-          title: "Grabaciones", // Título en la barra de pestañas.
-          headerTitle: "Grabaciones", // Título en el header.
+          title: "Grabaciones", 
+          headerTitle: "Grabaciones", 
           tabBarIcon: ({ color, size }) => (
-            <MessageSquare size={size} color={color} /> // Icono de la pestaña.
+            <MessageSquare size={size} color={color} /> 
           ),
         }}
       />
 
-      {/* Pestaña de inicio (Casa) */}
+      {/* Pestaña de inicio*/}
       <Tabs.Screen
         name="index"
         options={{
@@ -43,7 +43,7 @@ export default function TabLayout() {
               style={{
                 width: size,
                 height: size,
-                tintColor: color, // Permite que el logo cambie de color según el estado activo/inactivo.
+                tintColor: color,
               }}
             />
           ),
@@ -56,11 +56,11 @@ export default function TabLayout() {
         options={{
           title: "Video",
           headerTitle: "Video",
-          tabBarIcon: ({ color, size }) => <Video size={size} color={color} />, // Icono personalizado para videos.
+          tabBarIcon: ({ color, size }) => <Video size={size} color={color} />,
         }}
       />
 
-      {/* Pestaña de información (About) */}
+      {/* Pestaña de información*/}
       <Tabs.Screen
         name="about"
         options={{
@@ -75,11 +75,11 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   headerRight: {
-    marginRight: 15, // Espaciado derecho del logo en el header.
+    marginRight: 15, 
   },
   headerIcon: {
-    width: 24, // Ancho del logo en el header.
-    height: 24, // Alto del logo en el header.
-    tintColor: "#fff", // Color del logo en el header.
+    width: 24, 
+    height: 24, 
+    tintColor: "#fff", 
   },
 });
