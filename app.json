@@ -13,8 +13,12 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Esta aplicación necesita acceder a la cámara para grabar videos.",
         "NSMicrophoneUsageDescription": "Esta aplicación necesita acceder al micrófono para grabar audio en los videos.",
-        "UIBackgroundModes": ["audio"]
-      }
+        "UIBackgroundModes": [
+          "audio",
+          "audio"
+        ]
+      },
+      "bundleIdentifier": "com.josepmartinez.lipstalkapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,9 +32,12 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "package": "com.josepmartinez.lipstalkapp"
     },
     "web": {
       "bundler": "metro",
