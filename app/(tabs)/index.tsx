@@ -36,17 +36,11 @@ export default function HomeScreen() {
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
     null
   ); // Intervalo del temporizador
-  const cameraRef = useRef<CameraView | null>(null); 
-  const navigation = useNavigation(); 
-  const progressAnimation = useRef(new Animated.Value(0)).current; 
+  const cameraRef = useRef<CameraView | null>(null);
+  const navigation = useNavigation();
+  const progressAnimation = useRef(new Animated.Value(0)).current;
   const [textoVisible, setTextoVisible] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
-  const CLOUDINARY_URL =
-    "https://api.cloudinary.com/v1_1/dzd2vbxlk/video/upload";
-  const CLOUDINARY_API_KEY = "859879863328536";
-  const CLOUDINARY_API_SECRET = "OG8mhv-cnZU5316a9y0T2t2nK4o";
-  const CLOUDINARY_PRESET = "lipstalk"; 
-  const CLOUDINARY_CLOUD_NAME = "dzd2vbxlk";
   const [isLoading, setIsLoading] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState("");
   const TRANSCRIPTIONS_FILE =
@@ -156,91 +150,6 @@ export default function HomeScreen() {
       .padStart(2, "0")}`;
   };
 
-  // Subir video a Cloudinary
-  const uploadToCloudinary = async (fileUri) => {
-    try {
-      const videoData = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const formData = new FormData();
-      formData.append("file", `data:video/mp4;base64,${videoData}`);
-      formData.append("upload_preset", CLOUDINARY_PRESET);
-
-      const response = await axios.post(
-        "https://api.cloudinary.com/v1_1/dzd2vbxlk/video/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      console.log("📹 Video subido a Cloudinary:", response.data.secure_url);
-      return response.data.secure_url;
-    } catch (error) {
-      console.error("❌ Error subiendo video a Cloudinary:", error);
-      throw error;
-    }
-  };
-
-  // Guardar video recortado en local
-  const saveCroppedVideoUrl = async (url) => {
-    const videosDirectory = FileSystem.documentDirectory + "videos/";
-
-    // Formato de nombre: video_AAAA-MM-DD_HH-MM-SS.mp4
-    const now = new Date();
-    const filename = `${now
-      .getDate()
-      .toString()
-      .padStart(2, "0")}-${now.getFullYear()}-${(now.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}_${now.getHours().toString().padStart(2, "0")}:${now
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}.mp4`;
-
-    const path = videosDirectory + filename;
-
-    const downloadResumable = FileSystem.createDownloadResumable(url, path);
-
-    const { uri } = await downloadResumable.downloadAsync();
-    console.log("✅ Video recortado guardado:", uri);
-  };
-
-  // Eliminar video de Cloudinary
-  const deleteFromCloudinary = async (publicId) => {
-    try {
-      const timestamp = Math.floor(Date.now() / 1000);
-      const stringToSign = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
-      const sha1 = require("js-sha1");
-      const signature = sha1(stringToSign);
-
-      const response = await axios.post(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/destroy`,
-        {
-          public_id: publicId,
-          api_key: CLOUDINARY_API_KEY,
-          timestamp,
-          signature,
-        }
-      );
-
-      if (response.data.result === "ok") {
-        console.log("✅ Video eliminado de Cloudinary:", publicId);
-      } else {
-        console.error(
-          "❌ Error al eliminar video de Cloudinary:",
-          response.data
-        );
-      }
-    } catch (error) {
-      console.error("❌ Error eliminando video de Cloudinary:", error);
-      setIsLoading(false);
-    }
-  };
-
   const startRecording = async () => {
     if (!cameraRef.current) return;
 
@@ -271,14 +180,26 @@ export default function HomeScreen() {
 
       console.log("✅ Video grabado:", video.uri);
       setIsLoading(true); // Activa animacion de cargando
-      // Subir y recortar el video en Cloudinary
-      const uploadedVideoUrl = await uploadToCloudinary(video.uri);
-      console.log("✅ Video subido y recortado:", uploadedVideoUrl);
+      // Guardar video en local
+      const now = new Date();
+      const filename = `${now
+        .getDate()
+        .toString()
+        .padStart(2, "0")}-${now.getFullYear()}-${(now.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}_${now.getHours().toString().padStart(2, "0")}-${now
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}-${now.getSeconds().toString().padStart(2, "0")}.mp4`;
 
-      // Guardar el video recortado localmente
-      await saveCroppedVideoUrl(uploadedVideoUrl);
-      const publicId = uploadedVideoUrl.split("/").pop().split(".")[0];
-      await deleteFromCloudinary(publicId);
+      const destination = FileSystem.documentDirectory + "videos/" + filename;
+
+      await FileSystem.moveAsync({
+        from: video.uri,
+        to: destination,
+      });
+
+      console.log("✅ Video original guardado:", destination);
       setIsLoading(false); // Desactiva la animación de cargando
       setTextoVisible(true);
     } catch (error) {
@@ -645,6 +566,6 @@ const styles = StyleSheet.create({
     bottom: 150,
     textAlign: "center",
     fontWeight: "bold",
-    fontSize: 14, 
+    fontSize: 14,
   },
 });
