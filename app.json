@@ -63,6 +63,7 @@
           "recordAudioAndroid": true
         }
       ],
+      "@config-plugins/ffmpeg-kit-react-native",
       [
         "expo-video",
         {

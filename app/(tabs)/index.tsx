@@ -23,9 +23,7 @@ import { useNavigation, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Ellipse } from "react-native-svg";
 import Texto from "../../components/texto";
-import axios from "axios";
-import sha1 from "js-sha1";
-import NetInfo from "@react-native-community/netinfo";
+import { FFmpegKit } from "ffmpeg-kit-react-native";
 
 export default function HomeScreen() {
   const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
@@ -190,18 +188,37 @@ export default function HomeScreen() {
         .padStart(2, "0")}_${now.getHours().toString().padStart(2, "0")}-${now
         .getMinutes()
         .toString()
-        .padStart(2, "0")}-${now.getSeconds().toString().padStart(2, "0")}.mp4`;
+        .padStart(2, "0")}-${now.getSeconds().toString().padStart(2, "0")}`;
 
-      const destination = FileSystem.documentDirectory + "videos/" + filename;
+      // Rutas de entrada y salida
+      let inputPath = video.uri;
+      if (Platform.OS === "ios" && inputPath.startsWith("file://")) {
+        inputPath = inputPath.replace("file://", "");
+      }
+      const outputPath =
+        FileSystem.documentDirectory + "videos/" + filename + ".mp4";
 
-      await FileSystem.moveAsync({
-        from: video.uri,
-        to: destination,
-      });
+      // Ejecutar recorte con FFmpegKit
+      const ffmpegCmd = `-i "${inputPath}" -vf "crop=460:300:10:530,scale=96:96" -c:v mpeg4 -an "${outputPath}"`;
+      const session = await FFmpegKit.execute(ffmpegCmd);
+      const returnCode = await session.getReturnCode();
 
-      console.log("✅ Video original guardado:", destination);
-      setIsLoading(false); // Desactiva la animación de cargando
-      setTextoVisible(true);
+      if (returnCode.isValueSuccess()) {
+        console.log("✅ Vídeo recortado guardado en", outputPath);
+
+        // Borrar video original
+        await FileSystem.deleteAsync(video.uri, { idempotent: true });
+
+        console.log("🗑️ Vídeo original eliminado.");
+
+        setIsLoading(false);
+        setTextoVisible(true);
+
+        // Ahora outputPath sería el que debes usar si quieres hacer algo más con el video
+      } else {
+        console.error("❌ Error recortando el video.");
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error("❌ Error:", error);
       setIsLoading(false);
