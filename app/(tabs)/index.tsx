@@ -199,7 +199,7 @@ export default function HomeScreen() {
         FileSystem.documentDirectory + "videos/" + filename + ".mp4";
 
       // Ejecutar recorte con FFmpegKit
-      const ffmpegCmd = `-i "${inputPath}" -vf "crop=460:300:10:530,scale=96:96" -c:v mpeg4 -an "${outputPath}"`;
+      const ffmpegCmd = `-i "${inputPath}" -vf "crop=460:300:330:820,scale=96:96" -c:v mpeg4 -an "${outputPath}"`;
       const session = await FFmpegKit.execute(ffmpegCmd);
       const returnCode = await session.getReturnCode();
 
