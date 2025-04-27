@@ -70,7 +70,8 @@
           "supportsBackgroundPlayback": true,
           "supportsPictureInPicture": true
         }
-      ]
+      ],
+      "react-native-pytorch-core"
     ],
     "experiments": {
       "typedRoutes": true
