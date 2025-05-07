@@ -140,6 +140,44 @@ export default function HomeScreen() {
     }
   };
 
+  const sendVideoForTranscription = async (videoPath) => {
+    try {
+      let uriToSend = videoPath;
+      if (Platform.OS === "ios" && uriToSend.startsWith("file://")) {
+        uriToSend = uriToSend;  // en iOS lo dejamos con file:// para fetch
+      }
+  
+      const formData = new FormData();
+      formData.append("file", {
+        uri: uriToSend,
+        name: "video.mp4",
+        type: "video/mp4",
+      } as any);
+  
+      console.log("🚀 Enviando vídeo a servidor:", uriToSend);
+  
+      const response = await fetch("http://192.168.0.33:8000/transcribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      });
+  
+      const data = await response.json();
+      console.log("✅ Transcripción recibida:", data.transcription);
+  
+      // Actualiza el estado con la transcripción real
+      setTranscriptionText(data.transcription);
+      setTextoVisible(true);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("❌ Error enviando vídeo:", error);
+      setIsLoading(false);
+      Alert.alert("Error", "No se pudo enviar el vídeo para transcribir.");
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -205,15 +243,14 @@ export default function HomeScreen() {
 
       if (returnCode.isValueSuccess()) {
         console.log("✅ Vídeo recortado guardado en", outputPath);
-
+    
         // Borrar video original
         await FileSystem.deleteAsync(video.uri, { idempotent: true });
-
+    
         console.log("🗑️ Vídeo original eliminado.");
-
-        setIsLoading(false);
-        setTextoVisible(true);
-
+    
+        // Aquí enviamos el vídeo al servidor 👇
+        await sendVideoForTranscription(outputPath);
         // Ahora outputPath sería el que debes usar si quieres hacer algo más con el video
       } else {
         console.error("❌ Error recortando el video.");
@@ -287,6 +324,7 @@ export default function HomeScreen() {
             <Texto
               visible={textoVisible}
               onClose={() => setTextoVisible(false)}
+              generatedText={transcriptionText}
               onSaveText={handleSaveText}
             />
             {/* Animación de cargando */}

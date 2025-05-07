@@ -5,7 +5,7 @@ import { X } from "lucide-react-native";
 const Texto = ({
   visible,
   onClose,
-  generatedText = "Aquí saldrá el texto traducido",
+  generatedText,
   onSaveText,  // Nueva prop para guardar el texto
 }) => {
   // Guardar el texto cuando se muestra
