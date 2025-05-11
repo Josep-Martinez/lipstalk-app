@@ -19,6 +19,7 @@ import * as FileSystem from "expo-file-system";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { DeviceEventEmitter } from "react-native";
+import * as Speech from 'expo-speech';
 
 const TRANSCRIPTIONS_FILE = FileSystem.documentDirectory + "transcriptions.json";
 
@@ -40,6 +41,10 @@ export default function RecordingScreen() {
 
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [transcriptionToDelete, setTranscriptionToDelete] = useState(null);
+  
+  // Estados para el control de lectura en voz alta
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingId, setSpeakingId] = useState(null);
 
   const years = ["Todos", "2023", "2024", "2025"];
   const months = ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -55,6 +60,8 @@ export default function RecordingScreen() {
 
     return () => {
       subscription.remove();
+      // Detener cualquier lectura en curso al desmontar el componente
+      Speech.stop();
     };
   }, []);
 
@@ -65,6 +72,46 @@ export default function RecordingScreen() {
       useNativeDriver: true,
     }).start();
   }, [loading]);
+
+  // Funciones para manejar la lectura en voz alta
+  const startSpeaking = async (text, id) => {
+    try {
+      // Detener cualquier lectura en curso
+      await Speech.stop();
+      
+      // Actualizar el estado
+      setIsSpeaking(true);
+      setSpeakingId(id);
+      
+      // Iniciar la lectura
+      Speech.speak(text, {
+        language: 'es',
+        rate: 0.9,
+        onDone: () => {
+          setIsSpeaking(false);
+          setSpeakingId(null);
+        },
+        onError: () => {
+          setIsSpeaking(false);
+          setSpeakingId(null);
+        }
+      });
+    } catch (error) {
+      console.error('Error al iniciar lectura:', error);
+      setIsSpeaking(false);
+      setSpeakingId(null);
+    }
+  };
+
+  const stopSpeaking = async () => {
+    try {
+      await Speech.stop();
+      setIsSpeaking(false);
+      setSpeakingId(null);
+    } catch (error) {
+      console.error('Error al detener lectura:', error);
+    }
+  };
 
   const loadTranscriptions = async () => {
     try {
@@ -98,6 +145,11 @@ export default function RecordingScreen() {
 
   const deleteTranscription = async (dateToDelete) => {
     try {
+      // Si estamos eliminando la transcripción que se está leyendo, detener la lectura
+      if (isSpeaking && speakingId === dateToDelete) {
+        await stopSpeaking();
+      }
+      
       // Filtrar la transcripción
       const updatedTranscriptions = transcriptions.filter(
         item => item.date !== dateToDelete
@@ -133,6 +185,11 @@ export default function RecordingScreen() {
   };
 
   const confirmDelete = (dateToDelete) => {
+    // Si estamos eliminando la transcripción que se está leyendo, detener la lectura
+    if (isSpeaking && speakingId === dateToDelete) {
+      stopSpeaking();
+    }
+    
     setTranscriptionToDelete(dateToDelete);
     setDeleteConfirmVisible(true);
   };
@@ -227,6 +284,11 @@ export default function RecordingScreen() {
   };
 
   const toggleExpansion = (date) => {
+    // Si estamos cerrando la transcripción que se está leyendo, detener la lectura
+    if (expandedTranscription === date && isSpeaking && speakingId === date) {
+      stopSpeaking();
+    }
+    
     setExpandedTranscription(expandedTranscription === date ? null : date);
   };
 
@@ -330,6 +392,28 @@ export default function RecordingScreen() {
         <View style={styles.transcriptionContent}>
           <Text style={styles.transcriptionText}>{item.text}</Text>
           <View style={styles.actionButtons}>
+            {/* Botón para leer el texto */}
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.speakButton]}
+              onPress={() => {
+                if (isSpeaking && speakingId === item.date) {
+                  stopSpeaking();
+                } else {
+                  startSpeaking(item.text, item.date);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={(isSpeaking && speakingId === item.date) ? "volume-mute-outline" : "volume-high-outline"} 
+                size={16} 
+                color="#fff" 
+              />
+              <Text style={styles.actionButtonText}>
+                {(isSpeaking && speakingId === item.date) ? "Detener" : "Leer"}
+              </Text>
+            </TouchableOpacity>
+            
             <TouchableOpacity 
               style={styles.actionButton}
               onPress={() => copyToClipboard(item.text)}
@@ -736,6 +820,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 6,
     marginRight: 8,
+  },
+  speakButton: {
+    backgroundColor: "#4CAF50", // Verde para el botón de lectura
   },
   shareButton: {
     backgroundColor: "#2979ff",
