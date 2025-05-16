@@ -70,30 +70,40 @@ export default function AboutScreen() {
           </View>
         </View>
         
-        {/* Ventanas de la app */}
+        {/* Pantallas de la app */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ventanas principales</Text>
+          <Text style={styles.sectionTitle}>Pantallas principales</Text>
           
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="camera" size={22} color="#FFF" />
-              <Text style={styles.cardTitle}>Grabación de Video</Text>
+              <Text style={styles.cardTitle}>LipsTalk</Text>
             </View>
             <Text style={styles.cardContent}>
-              Ventana principal donde los usuarios pueden iniciar la grabación, elegir entre cámara frontal o trasera, 
-              y posicionar su rostro correctamente usando la guía en pantalla, una vez finializada la grabación, existe una espera
-              de alrededor de 20 segundos hasta que el texto sea transcrito.
+              Pantalla principal donde los usuarios pueden iniciar la grabación, elegir entre cámara frontal o trasera, 
+              y una vez finalizada la grabación, el video se transcribirá de forma automática.
             </Text>
           </View>
           
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="folder-open" size={22} color="#FFF" />
-              <Text style={styles.cardTitle}>Historial de Grabaciones</Text>
+              <Ionicons name="document-text" size={22} color="#FFF" />
+              <Text style={styles.cardTitle}>Historial de Transcripciones</Text>
             </View>
             <Text style={styles.cardContent}>
               Accede al historial de transcripciones ordenadas por fecha y hora en el formato DD-MM-AAAA_HH:MM:SS,
-              con opciones para visualizar, filtrar y eliminar grabaciones.
+              con opciones para visualizar, filtrar, eliminar y escuchar las transcripciones mediante síntesis de voz.
+            </Text>
+          </View>
+          
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="videocam" size={22} color="#FFF" />
+              <Text style={styles.cardTitle}>Historial de Grabaciones</Text>
+            </View>
+            <Text style={styles.cardContent}>
+              Permite acceder a los videos grabados anteriormente, con posibilidad de visualizarlos, filtrarlos por fecha,
+              eliminarlos y enviarlos nuevamente para ser transcritos cuando sea necesario.
             </Text>
           </View>
         </View>
