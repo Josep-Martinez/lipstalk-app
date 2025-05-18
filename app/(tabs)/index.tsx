@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   TouchableOpacity,
@@ -19,7 +19,7 @@ import {
   useCameraPermissions,
 } from "expo-camera";
 import * as FileSystem from "expo-file-system";
-import { useNavigation, useRouter } from "expo-router";
+import { useNavigation, useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Ellipse } from "react-native-svg";
 import Texto from "../../components/texto";
@@ -70,14 +70,21 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Mostrar mensaje guía para colocar la cara en el óvalo (solo por 5 segundos)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowGuideMessage(false);
-    }, 5000);
+  // Mostrar mensaje guía para colocar la cara en el óvalo (solo por 3,5 segundos)
+  useFocusEffect(
+    useCallback(() => {
+      // Mostrar el mensaje guía
+      setShowGuideMessage(true);
 
-    return () => clearTimeout(timer);
-  }, []);
+      // Configurar el temporizador para ocultarlo después de 3,5 segundos
+      const timer = setTimeout(() => {
+        setShowGuideMessage(false);
+      }, 3500);
+
+      // Limpiar el temporizador cuando se pierde el foco
+      return () => clearTimeout(timer);
+    }, [])
+  );
 
   // Detener grabación automáticamente cuando se alcance el tiempo máximo
   useEffect(() => {
@@ -148,18 +155,18 @@ export default function HomeScreen() {
     try {
       let uriToSend = videoPath;
       if (Platform.OS === "ios" && uriToSend.startsWith("file://")) {
-        uriToSend = uriToSend;  // en iOS lo dejamos con file:// para fetch
+        uriToSend = uriToSend; // en iOS lo dejamos con file:// para fetch
       }
-  
+
       const formData = new FormData();
       formData.append("file", {
         uri: uriToSend,
         name: "video.mp4",
         type: "video/mp4",
       } as any);
-  
+
       console.log("🚀 Enviando vídeo a servidor:", uriToSend);
-  
+
       // Enviar al servidor local donde tengo corriendo el modelo
       const response = await fetch("http://192.168.0.33:8000/transcribe", {
         method: "POST",
@@ -168,10 +175,10 @@ export default function HomeScreen() {
         },
         body: formData,
       });
-  
+
       const data = await response.json();
       console.log("✅ Transcripción recibida:", data.transcription);
-  
+
       // Actualiza el estado con la transcripción obtenida
       setTranscriptionText(data.transcription);
       setTextoVisible(true);
@@ -224,7 +231,7 @@ export default function HomeScreen() {
 
       console.log("✅ Video grabado:", video.uri);
       setIsLoading(true); // Activar indicador de carga
-      
+
       // Crear nombre de archivo con formato de fecha y hora
       const now = new Date();
       const filename = `${now
@@ -253,12 +260,12 @@ export default function HomeScreen() {
 
       if (returnCode.isValueSuccess()) {
         console.log("✅ Vídeo recortado guardado en", outputPath);
-    
+
         // Borrar video original (sin recortar) para ahorrar espacio
         await FileSystem.deleteAsync(video.uri, { idempotent: true });
-    
+
         console.log("🗑️ Vídeo original eliminado.");
-    
+
         // Enviar el video recortado al servidor para transcripción
         await sendVideoForTranscription(outputPath);
       } else {
@@ -370,8 +377,7 @@ export default function HomeScreen() {
               </Svg>
               {showGuideMessage && (
                 <Text style={styles.guideText}>
-                  Coloca el rostro dentro de la figura para el correcto
-                  funcionamiento
+                  Coloca el rostro dentro del óvalo para la correcta transcipción
                 </Text>
               )}
             </View>
