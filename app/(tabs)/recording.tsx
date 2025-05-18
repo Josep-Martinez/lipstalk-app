@@ -21,38 +21,47 @@ import { Ionicons } from "@expo/vector-icons";
 import { DeviceEventEmitter } from "react-native";
 import * as Speech from 'expo-speech';
 
+// Ruta donde guardaremos el JSON con todas las transcripciones
 const TRANSCRIPTIONS_FILE = FileSystem.documentDirectory + "transcriptions.json";
 
 export default function RecordingScreen() {
+  // Estados para gestionar las transcripciones y la interfaz
   const [transcriptions, setTranscriptions] = useState([]);
   const [filteredTranscriptions, setFilteredTranscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTranscription, setExpandedTranscription] = useState(null);
-  const [fadeAnim] = useState(new Animated.Value(0));
+  const [fadeAnim] = useState(new Animated.Value(0)); // Para hacer más bonita la aparición de las transcripciones
   
+  // Estados para los filtros de fecha
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Estados para el selector de fecha
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerType, setPickerType] = useState(null); // 'year', 'month' o 'day'
+  const [pickerType, setPickerType] = useState(null);
   const [tempPickerValue, setTempPickerValue] = useState(null);
 
+  // Confirmación antes de borrar
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [transcriptionToDelete, setTranscriptionToDelete] = useState(null);
   
-  // Estados para el control de lectura en voz alta
+  // Para la función de leer en voz alta el texto transcrito
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingId, setSpeakingId] = useState(null);
 
+  // Valores para los selectores de fechas
   const years = ["Todos", "2023", "2024", "2025"];
   const months = ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const days = ["Todos", ...Array.from({ length: 31 }, (_, i) => `${i + 1}`)];
 
+  // Al iniciar la pantalla, cargamos las transcripciones y configuramos listener
   useEffect(() => {
     loadTranscriptions();
 
+    // Esto es para detectar cuando se guarda una nueva transcripción desde otra pantalla
+    // y actualizar automáticamente esta lista
     const subscription = DeviceEventEmitter.addListener("transcriptionSaved", () => {
       console.log("🔄 Recargando transcripciones...");
       loadTranscriptions();
@@ -60,11 +69,12 @@ export default function RecordingScreen() {
 
     return () => {
       subscription.remove();
-      // Detener cualquier lectura en curso al desmontar el componente
+      // Hay que detener la lectura si el usuario sale de la pantalla mientras está activa
       Speech.stop();
     };
   }, []);
 
+  // Efecto para que no aparezcan de golpe los elementos
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -73,17 +83,17 @@ export default function RecordingScreen() {
     }).start();
   }, [loading]);
 
-  // Funciones para manejar la lectura en voz alta
+  // Función para iniciar la lectura del texto en voz alta
   const startSpeaking = async (text, id) => {
     try {
-      // Detener cualquier lectura en curso
+      // Detenemos cualquier lectura previa que pudiera estar activa
       await Speech.stop();
       
-      // Actualizar el estado
+      // Actualizamos el estado para cambiar el icono del botón
       setIsSpeaking(true);
       setSpeakingId(id);
       
-      // Iniciar la lectura
+      // Esto inicia la lectura
       Speech.speak(text, {
         language: 'es',
         rate: 0.9,
@@ -103,6 +113,7 @@ export default function RecordingScreen() {
     }
   };
 
+  // Detener la lectura en curso
   const stopSpeaking = async () => {
     try {
       await Speech.stop();
@@ -113,6 +124,7 @@ export default function RecordingScreen() {
     }
   };
 
+  // Función para cargar transcripciones desde almacenamiento local
   const loadTranscriptions = async () => {
     try {
       setLoading(true);
@@ -130,6 +142,7 @@ export default function RecordingScreen() {
     }
   };
 
+  // Guardar las transcripciones en el disositivo
   const saveTranscriptions = async (updatedTranscriptions) => {
     try {
       await FileSystem.writeAsStringAsync(
@@ -143,19 +156,18 @@ export default function RecordingScreen() {
     }
   };
 
+  // Eliminar una transcripción por su fecha
   const deleteTranscription = async (dateToDelete) => {
     try {
-      // Si estamos eliminando la transcripción que se está leyendo, detener la lectura
+      // Si estamos eliminando justo la que se está leyendo, paramos la lectura
       if (isSpeaking && speakingId === dateToDelete) {
         await stopSpeaking();
       }
       
-      // Filtrar la transcripción
       const updatedTranscriptions = transcriptions.filter(
         item => item.date !== dateToDelete
       );
       
-      // Guardar en el archivo
       const saveSuccess = await saveTranscriptions(updatedTranscriptions);
       
       if (saveSuccess) {
@@ -164,10 +176,12 @@ export default function RecordingScreen() {
           filteredTranscriptions.filter(item => item.date !== dateToDelete)
         );
         
+        // Si estaba expandida, la cerramos
         if (expandedTranscription === dateToDelete) {
           setExpandedTranscription(null);
         }
         
+        // Feedback al usuario según la plataforma
         if (Platform.OS === 'android') {
           ToastAndroid.show('Transcripción eliminada', ToastAndroid.SHORT);
         } else {
@@ -184,8 +198,9 @@ export default function RecordingScreen() {
     }
   };
 
+  // Mostrar diálogo de confirmación antes de borrar
   const confirmDelete = (dateToDelete) => {
-    // Si estamos eliminando la transcripción que se está leyendo, detener la lectura
+    // Paramos la lectura si es la misma que queremos borrar
     if (isSpeaking && speakingId === dateToDelete) {
       stopSpeaking();
     }
@@ -194,6 +209,7 @@ export default function RecordingScreen() {
     setDeleteConfirmVisible(true);
   };
 
+  // Ejecutar el borrado una vez confirmado
   const handleConfirmDelete = async () => {
     if (transcriptionToDelete) {
       const success = await deleteTranscription(transcriptionToDelete);
@@ -204,8 +220,9 @@ export default function RecordingScreen() {
     }
   };
 
+  // Función para mostrar la fecha
   const formatDate = (dateString) => {
-    // Formato esperado: "DD-MM-YYYY_HH-MM"
+    // Formato de entrada: "DD-MM-YYYY_HH-MM"
     const parts = dateString.split("_");
     const datePart = parts[0].split("-");
     const timePart = parts[1] ? parts[1].replace("-", ":") : "";
@@ -217,6 +234,7 @@ export default function RecordingScreen() {
     return `${day} de ${month}, ${year} - ${timePart}`;
   };
 
+  // Mostrar el selector modal según el tipo
   const showPickerModal = (type) => {
     setPickerType(type);
     switch (type) {
@@ -233,6 +251,7 @@ export default function RecordingScreen() {
     setPickerVisible(true);
   };
 
+  // Confirmar la selección hecha en el picker
   const confirmPicker = () => {
     switch (pickerType) {
       case 'year':
@@ -248,6 +267,7 @@ export default function RecordingScreen() {
     setPickerVisible(false);
   };
 
+  // Aplicar los filtros seleccionados a la lista de transcripciones
   const applyFilter = () => {
     let filtered = transcriptions;
 
@@ -267,6 +287,7 @@ export default function RecordingScreen() {
     setFilteredTranscriptions(filtered);
     setShowFilters(false); 
 
+    // Efecto de aparición cuando cambian los resultados filtrados
     fadeAnim.setValue(0);
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -275,6 +296,7 @@ export default function RecordingScreen() {
     }).start();
   };
 
+  // Limpiar todos los filtros y volver a mostrar todas las transcripciones
   const clearFilter = () => {
     setSelectedYear(null);
     setSelectedMonth(null);
@@ -283,8 +305,9 @@ export default function RecordingScreen() {
     setShowFilters(false); 
   };
 
+  // Función para expandir/contraer una transcripción al tocarla
   const toggleExpansion = (date) => {
-    // Si estamos cerrando la transcripción que se está leyendo, detener la lectura
+    // Si estamos cerrando la que estaba leyéndose, paramos la lectura
     if (expandedTranscription === date && isSpeaking && speakingId === date) {
       stopSpeaking();
     }
@@ -292,6 +315,7 @@ export default function RecordingScreen() {
     setExpandedTranscription(expandedTranscription === date ? null : date);
   };
 
+  // Copiar texto al portapapeles
   const copyToClipboard = async (text) => {
     try {
       await Clipboard.setString(text);
@@ -306,7 +330,7 @@ export default function RecordingScreen() {
     }
   };
 
-  // Formato de compartir la trancripcion
+  // Compartir la transcripción por WhatsApp, email, etc.
   const shareText = async (text, dateString) => {
     try {
       const parts = dateString.split("_");
@@ -330,6 +354,7 @@ export default function RecordingScreen() {
     }
   };
 
+  // Componente para mostrar cuando no hay transcripciones guardadas
   const EmptyListComponent = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="document-text-outline" size={64} color="#d1d5db" />
@@ -340,6 +365,7 @@ export default function RecordingScreen() {
     </View>
   );
 
+  // Esta función renderiza cada elemento de la lista de transcripciones
   const renderItem = ({ item, index }) => (
     <Animated.View
       style={[
@@ -392,7 +418,7 @@ export default function RecordingScreen() {
         <View style={styles.transcriptionContent}>
           <Text style={styles.transcriptionText}>{item.text}</Text>
           <View style={styles.actionButtons}>
-            {/* Botón para leer el texto */}
+            {/* Botón para leer el texto en voz alta (cambia entre reproducir y parar) */}
             <TouchableOpacity 
               style={[styles.actionButton, styles.speakButton]}
               onPress={() => {
@@ -444,6 +470,7 @@ export default function RecordingScreen() {
     </Animated.View>
   );
 
+  // Pantalla de carga mientras se cargan las transcripciones
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -472,6 +499,7 @@ export default function RecordingScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Panel de filtros que se muestra/oculta */}
       {showFilters && (
         <View style={styles.filterContainer}>
           <Text style={styles.filterTitle}>Filtrar por fecha</Text>
@@ -541,6 +569,7 @@ export default function RecordingScreen() {
         </View>
       )}
 
+      {/* Lista de transcripciones */}
       <FlatList
         data={filteredTranscriptions}
         renderItem={renderItem}
@@ -586,7 +615,7 @@ export default function RecordingScreen() {
         </View>
       </Modal>
 
-      {/* Wheel Picker Modal */}
+      {/* Modal para seleccionar fechas (picker) */}
       <Modal
         visible={pickerVisible}
         animationType="slide"

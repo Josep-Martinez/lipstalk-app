@@ -45,7 +45,7 @@ export default function HomeScreen() {
     FileSystem.documentDirectory + "transcriptions.json";
   const [showGuideMessage, setShowGuideMessage] = useState(true);
 
-  // Solicitar permisos de cámara y micrófono al iniciar la aplicación
+  // Solicitar permisos de cámara y micrófono al cargar la app
   useEffect(() => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -64,12 +64,13 @@ export default function HomeScreen() {
 
     ensureDirectoryExists();
 
+    // Limpieza del timer al desmontar el componente
     return () => {
       if (timerInterval) clearInterval(timerInterval);
     };
   }, []);
 
-  // Mensaje inicio para poner cara en el ovalo
+  // Mostrar mensaje guía para colocar la cara en el óvalo (solo por 5 segundos)
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowGuideMessage(false);
@@ -78,14 +79,14 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Detener grabación por tiempo
+  // Detener grabación automáticamente cuando se alcance el tiempo máximo
   useEffect(() => {
     if (recordingTime >= MAX_RECORDING_TIME && isRecording) {
       stopRecording();
     }
   }, [recordingTime, isRecording]);
 
-  // Crear directorio para almacenar videos localmente
+  // Asegurar que existe el directorio para guardar los videos
   const ensureDirectoryExists = async () => {
     const videosDirectory = FileSystem.documentDirectory + "videos/";
     const dirInfo = await FileSystem.getInfoAsync(videosDirectory);
@@ -96,7 +97,7 @@ export default function HomeScreen() {
     }
   };
 
-  // Guardar la transcripción en local
+  // Guardar la transcripción generada en local
   const handleSaveText = async (text) => {
     setTranscriptionText(text);
     try {
@@ -107,6 +108,7 @@ export default function HomeScreen() {
         existingTranscriptions = JSON.parse(content);
       }
 
+      // Crear formato de fecha para el nombre del archivo
       const now = new Date();
       const formattedDate = `${now.getDate().toString().padStart(2, "0")}-${(
         now.getMonth() + 1
@@ -131,6 +133,7 @@ export default function HomeScreen() {
         JSON.stringify(updatedTranscriptions)
       );
 
+      // Notificar a otras pantallas que hay una nueva transcripción
       DeviceEventEmitter.emit("transcriptionSaved");
 
       console.log("✅ Transcripción guardada:", newTranscription);
@@ -140,6 +143,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Enviar video al servidor para transcribir
   const sendVideoForTranscription = async (videoPath) => {
     try {
       let uriToSend = videoPath;
@@ -156,6 +160,7 @@ export default function HomeScreen() {
   
       console.log("🚀 Enviando vídeo a servidor:", uriToSend);
   
+      // Enviar al servidor local donde tengo corriendo el modelo
       const response = await fetch("http://192.168.0.33:8000/transcribe", {
         method: "POST",
         headers: {
@@ -167,7 +172,7 @@ export default function HomeScreen() {
       const data = await response.json();
       console.log("✅ Transcripción recibida:", data.transcription);
   
-      // Actualiza el estado con la transcripción real
+      // Actualiza el estado con la transcripción obtenida
       setTranscriptionText(data.transcription);
       setTextoVisible(true);
       setIsLoading(false);
@@ -178,6 +183,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Dar formato al tiempo de grabación (MM:SS)
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -186,6 +192,7 @@ export default function HomeScreen() {
       .padStart(2, "0")}`;
   };
 
+  // Iniciar grabación de video
   const startRecording = async () => {
     if (!cameraRef.current) return;
 
@@ -195,19 +202,20 @@ export default function HomeScreen() {
       setIsRecording(true);
       setRecordingTime(0);
 
-      // Inicia temporizador
+      // Inicia temporizador para mostrar tiempo transcurrido
       const interval = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
       setTimerInterval(interval);
 
-      // Iniciar animación de la barra
+      // Animar la barra de progreso durante la grabación
       Animated.timing(progressAnimation, {
         toValue: 1,
         duration: MAX_RECORDING_TIME * 1000,
         useNativeDriver: false,
       }).start();
 
+      // Iniciar grabación en la cámara
       let video = await cameraRef.current.recordAsync();
       if (!video?.uri) {
         throw new Error("No se pudo obtener la URI del video.");
@@ -215,8 +223,9 @@ export default function HomeScreen() {
       }
 
       console.log("✅ Video grabado:", video.uri);
-      setIsLoading(true); // Activa animacion de cargando
-      // Guardar video en local
+      setIsLoading(true); // Activar indicador de carga
+      
+      // Crear nombre de archivo con formato de fecha y hora
       const now = new Date();
       const filename = `${now
         .getDate()
@@ -228,7 +237,7 @@ export default function HomeScreen() {
         .toString()
         .padStart(2, "0")}-${now.getSeconds().toString().padStart(2, "0")}`;
 
-      // Rutas de entrada y salida
+      // Preparar rutas para el procesamiento del video
       let inputPath = video.uri;
       if (Platform.OS === "ios" && inputPath.startsWith("file://")) {
         inputPath = inputPath.replace("file://", "");
@@ -236,7 +245,8 @@ export default function HomeScreen() {
       const outputPath =
         FileSystem.documentDirectory + "videos/" + filename + ".mp4";
 
-      // Ejecutar recorte con FFmpegKit
+      // Recortar y redimensionar el video para que funcione con el modelo
+      // El modelo espera videos de 96x96 centrados en la boca
       const ffmpegCmd = `-i "${inputPath}" -vf "crop=460:300:330:820,scale=96:96" -c:v mpeg4 -an "${outputPath}"`;
       const session = await FFmpegKit.execute(ffmpegCmd);
       const returnCode = await session.getReturnCode();
@@ -244,14 +254,13 @@ export default function HomeScreen() {
       if (returnCode.isValueSuccess()) {
         console.log("✅ Vídeo recortado guardado en", outputPath);
     
-        // Borrar video original
+        // Borrar video original (sin recortar) para ahorrar espacio
         await FileSystem.deleteAsync(video.uri, { idempotent: true });
     
         console.log("🗑️ Vídeo original eliminado.");
     
-        // Aquí enviamos el vídeo al servidor 👇
+        // Enviar el video recortado al servidor para transcripción
         await sendVideoForTranscription(outputPath);
-        // Ahora outputPath sería el que debes usar si quieres hacer algo más con el video
       } else {
         console.error("❌ Error recortando el video.");
         setIsLoading(false);
@@ -269,10 +278,12 @@ export default function HomeScreen() {
     }
   };
 
+  // Detener la grabación de video
   const stopRecording = async () => {
     if (cameraRef.current && isRecording) {
       console.log("⏹️ Deteniendo grabación...");
 
+      // Pequeño retraso para asegurar que la grabación se completó
       setTimeout(() => {
         try {
           cameraRef.current?.stopRecording();
@@ -297,6 +308,7 @@ export default function HomeScreen() {
     setFacing((current) => (current === "back" ? "front" : "back"));
   };
 
+  // Calcular dimensiones para la cámara
   const windowHeight = Dimensions.get("window").height;
   const windowWidth = Dimensions.get("window").width;
   const tabBarHeight = 50;
@@ -313,21 +325,21 @@ export default function HomeScreen() {
       <View style={[styles.cameraContainer, { height: cameraHeight }]}>
         {permission?.granted ? (
           <>
-            {/* Cámara */}
+            {/* Componente de cámara */}
             <CameraView
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
               mode="video"
             />
-            {/* Mostrar la transcripción*/}
+            {/* Componente para mostrar el texto transcrito */}
             <Texto
               visible={textoVisible}
               onClose={() => setTextoVisible(false)}
               generatedText={transcriptionText}
               onSaveText={handleSaveText}
             />
-            {/* Animación de cargando */}
+            {/* Indicador de carga durante la transcripción */}
             {isLoading && (
               <View style={styles.loadingOverlay}>
                 <View style={styles.loadingBox}>
@@ -338,7 +350,7 @@ export default function HomeScreen() {
                 </View>
               </View>
             )}
-            {/* Posicion Ovalo */}
+            {/* Guía visual para posicionar la cara (óvalo) */}
             <View style={styles.faceGuideContainer} pointerEvents="none">
               <Svg
                 height="100%"
@@ -362,10 +374,9 @@ export default function HomeScreen() {
                   funcionamiento
                 </Text>
               )}
-              {/* <Text style={styles.guideText}>Coloca tu rostro dentro del óvalo</Text> */}
             </View>
 
-            {/* Barra de progreso */}
+            {/* Barra de progreso para mostrar tiempo restante */}
             {isRecording && (
               <View style={styles.progressBarContainer}>
                 <Animated.View
@@ -382,7 +393,7 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* Indicador de grabación */}
+            {/* Indicador de grabación y tiempo */}
             {isRecording && (
               <View style={styles.recordingIndicator}>
                 <View style={styles.recordingDot} />
@@ -393,7 +404,7 @@ export default function HomeScreen() {
             )}
           </>
         ) : (
-          // Muestra mensaje de advertencia si no hay permisos para la cámara
+          // Mensaje si no hay permisos de cámara
           <View style={styles.permissionWarning}>
             <Text style={{ color: "white", textAlign: "center", padding: 20 }}>
               Se requiere permiso de cámara para usar esta función. Por favor,
@@ -409,7 +420,7 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Controles de la cámara */}
+      {/* Controles de cámara en la parte inferior */}
       <View style={styles.controlsContainer}>
         {/* Botón para cambiar de cámara */}
         <TouchableOpacity style={styles.flipButton} onPress={toggleCamera}>
@@ -417,7 +428,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
         <View style={styles.emptySpace} />
 
-        {/* Botón de grabación */}
+        {/* Botón de grabación/detener */}
         <TouchableOpacity
           style={[
             styles.recordButton,
@@ -582,7 +593,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 15,
     paddingHorizontal: 30,
-    backgroundColor: "rgba(0, 0, 0, 0.75)", // <-- ESTA ES LA ZONA GRIS SEMITRANSPARENTE
+    backgroundColor: "rgba(0, 0, 0, 0.75)", // Fondo semitransparente para los controles
     position: "absolute",
     bottom: 0,
     width: "100%",

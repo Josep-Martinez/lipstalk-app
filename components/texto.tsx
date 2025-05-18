@@ -6,15 +6,16 @@ const Texto = ({
   visible,
   onClose,
   generatedText,
-  onSaveText,  // Nueva prop para guardar el texto
+  onSaveText,  // Variable para guardar el texto
 }) => {
-  // Guardar el texto cuando se muestra
+  // Este efecto guarda automáticamente el texto cuando se muestra el componente
   useEffect(() => {
     if (visible && onSaveText) {
-      onSaveText(generatedText);  // Guardar el texto real
+      onSaveText(generatedText);  // Llama a la función para guardar el texto
     }
   }, [visible, generatedText]);
 
+  // Si no es visible, no mostramos nada
   if (!visible) return null;
 
   return (

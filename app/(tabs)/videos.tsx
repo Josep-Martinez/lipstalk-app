@@ -34,29 +34,30 @@ export default function VideoPlayerScreen() {
   const [transcriptionText, setTranscriptionText] = useState("");
   const TRANSCRIPTIONS_FILE = FileSystem.documentDirectory + "transcriptions.json";
   
-  // Estados para filtros
+  // Estados para filtros (misma lógica que en la pantalla de transcripciones)
   const [filteredVideos, setFilteredVideos] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerType, setPickerType] = useState(null); // 'year', 'month' o 'day'
+  const [pickerType, setPickerType] = useState(null); 
   const [tempPickerValue, setTempPickerValue] = useState(null);
   const [fadeAnim] = useState(new Animated.Value(1));
   
-  // Arrays para pickers
+  // Arrays para selectores
   const years = ["Todos", "2023", "2024", "2025"];
   const months = ["Todos", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const days = ["Todos", ...Array.from({ length: 31 }, (_, i) => `${i + 1}`)];
 
+  // Cargar videos cada vez que se graba un video
   useFocusEffect(
     useCallback(() => {
       loadVideos();
     }, [])
   );
 
-  // Guardar la transcripción en local
+  // Guardar la transcripción en local después de recibirla del servidor
   const handleSaveText = async (text) => {
     setTranscriptionText(text);
     try {
@@ -67,6 +68,7 @@ export default function VideoPlayerScreen() {
         existingTranscriptions = JSON.parse(content);
       }
 
+      // Formatear la fecha actual para usarla como ID único
       const now = new Date();
       const formattedDate = `${now.getDate().toString().padStart(2, "0")}-${(
         now.getMonth() + 1
@@ -91,6 +93,7 @@ export default function VideoPlayerScreen() {
         JSON.stringify(updatedTranscriptions)
       );
 
+      // Notificar a la pantalla de transcripciones para que actualice su lista
       DeviceEventEmitter.emit("transcriptionSaved");
 
       console.log("✅ Transcripción guardada:", newTranscription);
@@ -100,15 +103,17 @@ export default function VideoPlayerScreen() {
     }
   };
 
-  // Enviar video para transcripción
+  // Enviar video al servidor para su transcripción
   const sendVideoForTranscription = async (videoPath) => {
     try {
       setIsLoading(true);
       let uriToSend = videoPath;
+      // En iOS las URI empiezan con file:// pero en Android no
       if (Platform.OS === "ios" && uriToSend.startsWith("file://")) {
-        uriToSend = uriToSend;  // en iOS lo dejamos con file:// para fetch
+        uriToSend = uriToSend; 
       }
   
+      // Preparamos el FormData para enviar el archivo
       const formData = new FormData();
       formData.append("file", {
         uri: uriToSend,
@@ -118,6 +123,7 @@ export default function VideoPlayerScreen() {
   
       console.log("🚀 Enviando vídeo a servidor:", uriToSend);
   
+      // Mi servidor local corre en esta IP
       const response = await fetch("http://192.168.0.33:8000/transcribe", {
         method: "POST",
         headers: {
@@ -129,7 +135,7 @@ export default function VideoPlayerScreen() {
       const data = await response.json();
       console.log("✅ Transcripción recibida:", data.transcription);
   
-      // Actualiza el estado con la transcripción real
+      // Actualiza el estado con la transcripción recibida
       setTranscriptionText(data.transcription);
       setTextoVisible(true);
       setIsLoading(false);
@@ -140,20 +146,20 @@ export default function VideoPlayerScreen() {
     }
   };
 
-  // Solicitar permisos y guardar el video
+  // Guardar el video en la app Archivos para compartirlo
   const saveVideoToFiles = async (videoUri: string) => {
     try {
-      // Crear una ruta
+      // Crear una ruta de destino
       const fileName = videoUri.split("/").pop();
       const destinationUri = FileSystem.documentDirectory + fileName;
 
-      // Copiar el video
+      // Copiar el video al directorio de documentos
       await FileSystem.copyAsync({
         from: videoUri,
         to: destinationUri,
       });
 
-      // Guardar archivo
+      // Abrir el diálogo para compartir/guardar
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(destinationUri);
       } else {
@@ -168,13 +174,51 @@ export default function VideoPlayerScreen() {
     }
   };
 
-  // Carga los videos desde el directorio local
+  // Extraer partes de fecha del nombre del archivo para los filtros y ordenación
+  const extractDateParts = (filePath) => {
+    const fileName = filePath.split("/").pop() || "";
+    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+    
+    // Formato esperado: DD-MM-YYYY_HH-MM-SS
+    try {
+      const parts = nameWithoutExt.split("_");
+      if (parts.length === 2) {
+        const datePart = parts[0].split("-");
+        const timePart = parts[1].split("-");
+        if (datePart.length === 3 && timePart.length === 3) {
+          // Crear un objeto Date para poder ordenarlo fácilmente
+          const day = parseInt(datePart[0]);
+          const year = parseInt(datePart[1]);
+          const month = parseInt(datePart[2]) - 1; // En TypeScript los meses van de 0-11
+          
+          const hour = parseInt(timePart[0]);
+          const minute = parseInt(timePart[1]);
+          const second = parseInt(timePart[2]);
+          
+          const date = new Date(year, month, day, hour, minute, second);
+          
+          return {
+            day: datePart[0],
+            year: datePart[1],
+            month: datePart[2],
+            rawName: nameWithoutExt,
+            date: date
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
+  
+  // Carga los videos desde el directorio local de la app
   const loadVideos = async () => {
     try {
       setLoading(true);
       const directory = FileSystem.documentDirectory + "videos/";
 
-      // Verificar si el directorio existe
+      // Verificar si el directorio existe, si no, crearlo
       const dirInfo = await FileSystem.getInfoAsync(directory);
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
@@ -182,8 +226,22 @@ export default function VideoPlayerScreen() {
 
       const files = await FileSystem.readDirectoryAsync(directory);
       const videoFiles = files.map((file) => directory + file);
-      setVideos(videoFiles);
-      setFilteredVideos(videoFiles);
+      
+      // Ordenar videos por fecha (más reciente primero)
+      const sortedVideos = [...videoFiles].sort((a, b) => {
+        const dateA = extractDateParts(a);
+        const dateB = extractDateParts(b);
+        
+        // Si no podemos extraer la fecha de alguno, lo ponemos al final
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        
+        // Ordenar de más reciente a más antiguo
+        return dateB.date.getTime() - dateA.date.getTime();
+      });
+      
+      setVideos(sortedVideos);
+      setFilteredVideos(sortedVideos);
       setLoading(false);
       
       // Animar la aparición de la lista
@@ -199,7 +257,7 @@ export default function VideoPlayerScreen() {
     }
   };
 
-  // Elimina video seleccionado
+  // Elimina video seleccionado con confirmación
   const deleteVideo = async (videoPath: string) => {
     Alert.alert(
       "Eliminar Video",
@@ -230,32 +288,7 @@ export default function VideoPlayerScreen() {
     );
   };
 
-  // Extraer partes de fecha del nombre del archivo
-  const extractDateParts = (filePath) => {
-    const fileName = filePath.split("/").pop() || "";
-    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-    
-    // Formato esperado: DD-YYYY-MM_HH-MM-SS
-    try {
-      const parts = nameWithoutExt.split("_");
-      if (parts.length === 2) {
-        const datePart = parts[0].split("-");
-        if (datePart.length === 3) {
-          return {
-            day: datePart[0],
-            year: datePart[1],
-            month: datePart[2],
-            rawName: nameWithoutExt
-          };
-        }
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  };
-  
-  // Mostrar selector modal
+  // Mostrar selector modal (igual que en la pantalla de transcripciones)
   const showPickerModal = (type) => {
     setPickerType(type);
     switch (type) {
@@ -272,7 +305,7 @@ export default function VideoPlayerScreen() {
     setPickerVisible(true);
   };
 
-  // Confirmar selección en picker
+  // Confirmar selección de los selectores
   const confirmPicker = () => {
     switch (pickerType) {
       case 'year':
@@ -288,7 +321,7 @@ export default function VideoPlayerScreen() {
     setPickerVisible(false);
   };
 
-  // Aplicar filtros seleccionados
+  // Aplicar filtros seleccionados - esto es similar al de transcripciones
   const applyFilter = () => {
     let filtered = [...videos];
 
@@ -346,12 +379,12 @@ export default function VideoPlayerScreen() {
     }).start();
   };
 
-  // Nombre archivo con formato de fecha
+  // Convertir el nombre del archivo a una fecha legible
   const formatFileName = (path: string) => {
     const fileName = path.split("/").pop() || "";
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
     
-    // Intenta parsear el formato: DD-YYYY-MM_HH-MM-SS
+    // Intenta parsear el formato: DD-MM-YYYY_HH-MM-SS
     try {
       const parts = nameWithoutExt.split("_");
       if (parts.length === 2) {
@@ -384,13 +417,15 @@ export default function VideoPlayerScreen() {
     }
   };
 
-  // Reproducción de videos
+  // Estado para la reproducción de videos
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Controlar la reproducción
   const player = useVideoPlayer(selectedVideo || "", (player) => {
     player.loop = true;
   });
 
+  // Escuchar cambios en el estado de reproducción
   useEffect(() => {
     if (!player) return;
 
@@ -406,10 +441,12 @@ export default function VideoPlayerScreen() {
     };
   }, [player]);
 
+  // Alternar entre pantalla completa y normal para el reproductor
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  // Renderizar cada tarjeta de video en la lista
   const videoCard = ({ item }: { item: string }) => (
     <Animated.View style={{
       opacity: fadeAnim,
@@ -439,14 +476,14 @@ export default function VideoPlayerScreen() {
               {formatFileName(item)}
             </Text>
           </View>
-          {/* Botón para transcribir video */}
+          {/* Botón para transcribir video desde la lista */}
           <TouchableOpacity
             style={styles.transcribeButton}
             onPress={() => item && sendVideoForTranscription(item)}
           >
             <MaterialIcons name="closed-caption" size={22} color="#4CAF50" />
           </TouchableOpacity>
-          {/* Botón para eliminar video */}
+          {/* Botón para eliminar video desde la lista */}
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => deleteVideo(item)}
@@ -483,6 +520,7 @@ export default function VideoPlayerScreen() {
         </TouchableOpacity>
       </View>
       
+      {/* Panel de filtros - similar al de la pantalla de transcripciones */}
       {showFilters && (
         <View style={styles.filterContainer}>
           <Text style={styles.filterTitle}>Filtrar por fecha</Text>
@@ -552,6 +590,7 @@ export default function VideoPlayerScreen() {
         </View>
       )}
 
+      {/* Lista de videos grabados */}
       <FlatList
         data={filteredVideos}
         keyExtractor={(item) => item}
@@ -576,7 +615,7 @@ export default function VideoPlayerScreen() {
         }
       />
 
-      {/* Reproductor */}
+      {/* Reproductor de video */}
       {selectedVideo && (
         <View
           style={[
@@ -591,7 +630,7 @@ export default function VideoPlayerScreen() {
             style={isFullscreen ? styles.fullscreenVideo : styles.video}
           />
 
-          {/* Controles reporductor */}
+          {/* Controles del reproductor */}
           <View style={styles.controlsOverlay}>
             <TouchableOpacity
               style={styles.playButton}
@@ -637,7 +676,7 @@ export default function VideoPlayerScreen() {
                   <MaterialIcons name="delete" size={24} color="white" />
                 </TouchableOpacity>
 
-                {/* Botón para transcribir video */}
+                {/* Botón para transcribir video desde el reproductor */}
                 <TouchableOpacity
                   style={styles.controlButton}
                   onPress={() => selectedVideo && sendVideoForTranscription(selectedVideo)}
@@ -658,14 +697,14 @@ export default function VideoPlayerScreen() {
             </View>
           </View>
 
-          {/* File name overlay */}
+          {/* Nombre del archivo en overlay */}
           <View style={styles.filenameOverlay}>
             <Text style={styles.filename}>{formatFileName(selectedVideo)}</Text>
           </View>
         </View>
       )}
 
-      {/* Wheel Picker Modal */}
+      {/* Modal del selector de fechas - igual al de la pantalla de transcripciones */}
       <Modal
         visible={pickerVisible}
         animationType="slide"
@@ -712,7 +751,7 @@ export default function VideoPlayerScreen() {
         </View>
       </Modal>
 
-      {/* Mostrar la transcripción */}
+      {/* Componente para mostrar la transcripción - llamamos al componente Texto */}
       <Texto
         visible={textoVisible}
         onClose={() => setTextoVisible(false)}
@@ -720,7 +759,7 @@ export default function VideoPlayerScreen() {
         onSaveText={handleSaveText}
       />
 
-      {/* Animación de cargando */}
+      {/* Overlay de carga durante la transcripción - importante para feedback visual */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>

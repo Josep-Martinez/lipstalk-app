@@ -70,7 +70,7 @@ export default function AboutScreen() {
           </View>
         </View>
         
-        {/* Pantallas de la app */}
+        {/* Pantallas de la app - explicación detallada de cada pantalla */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pantallas principales</Text>
           
@@ -108,7 +108,7 @@ export default function AboutScreen() {
           </View>
         </View>
         
-        {/* Información del desarrollo */}
+        {/* Info sobre desarrolladores */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Desarrolladores</Text>
           
@@ -143,7 +143,7 @@ export default function AboutScreen() {
           </View>
         </View>
         
-        {/* Footer con versión */}
+        {/* Versión */}
         <View style={styles.footer}>
           <Text style={styles.version}>Versión 1.0.0</Text>
           <Text style={styles.copyright}>© 2025 LipsTalk</Text>
