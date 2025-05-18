@@ -24,10 +24,10 @@ import { DeviceEventEmitter } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 
 export default function VideoPlayerScreen() {
-  const [videos, setVideos] = useState<string[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [videos, setVideos] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [thumbnails, setThumbnails] = useState({});
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [textoVisible, setTextoVisible] = useState(false);
@@ -35,7 +35,7 @@ export default function VideoPlayerScreen() {
   const TRANSCRIPTIONS_FILE = FileSystem.documentDirectory + "transcriptions.json";
   
   // Estados para filtros (misma lógica que en la pantalla de transcripciones)
-  const [filteredVideos, setFilteredVideos] = useState<string[]>([]);
+  const [filteredVideos, setFilteredVideos] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
@@ -119,7 +119,7 @@ export default function VideoPlayerScreen() {
         uri: uriToSend,
         name: "video.mp4",
         type: "video/mp4",
-      } as any);
+      });
   
       console.log("🚀 Enviando vídeo a servidor:", uriToSend);
   
@@ -147,7 +147,7 @@ export default function VideoPlayerScreen() {
   };
 
   // Guardar el video en la app Archivos para compartirlo
-  const saveVideoToFiles = async (videoUri: string) => {
+  const saveVideoToFiles = async (videoUri) => {
     try {
       // Crear una ruta de destino
       const fileName = videoUri.split("/").pop();
@@ -179,35 +179,53 @@ export default function VideoPlayerScreen() {
     const fileName = filePath.split("/").pop() || "";
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
     
-    // Formato esperado: DD-MM-YYYY_HH-MM-SS
+    // Activar console.log para depurar
+    console.log("Analizando nombre de archivo:", nameWithoutExt);
+    
+    // Formato esperado: DD-YYYY-MM_HH-MM-SS
     try {
       const parts = nameWithoutExt.split("_");
       if (parts.length === 2) {
         const datePart = parts[0].split("-");
         const timePart = parts[1].split("-");
+        
         if (datePart.length === 3 && timePart.length === 3) {
-          // Crear un objeto Date para poder ordenarlo fácilmente
-          const day = parseInt(datePart[0]);
-          const year = parseInt(datePart[1]);
-          const month = parseInt(datePart[2]) - 1; // En TypeScript los meses van de 0-11
+          // Tu formato actual parece ser DD-YYYY-MM
+          const day = datePart[0];
+          const year = datePart[1];
+          const month = datePart[2];
           
-          const hour = parseInt(timePart[0]);
-          const minute = parseInt(timePart[1]);
-          const second = parseInt(timePart[2]);
+          const hour = timePart[0];
+          const minute = timePart[1];
+          const second = timePart[2];
           
-          const date = new Date(year, month, day, hour, minute, second);
+          // Crear objeto Date para ordenar
+          const date = new Date(
+            parseInt(year), 
+            parseInt(month) - 1, 
+            parseInt(day),
+            parseInt(hour),
+            parseInt(minute),
+            parseInt(second)
+          );
+          
+          console.log("Fecha extraída:", {
+            day, year, month, date: date.toISOString()
+          });
           
           return {
-            day: datePart[0],
-            year: datePart[1],
-            month: datePart[2],
+            day: day,
+            year: year,
+            month: month,
             rawName: nameWithoutExt,
             date: date
           };
         }
       }
+      console.log("No se pudo extraer fecha del nombre:", nameWithoutExt);
       return null;
     } catch (error) {
+      console.error("Error extrayendo fecha:", error);
       return null;
     }
   };
@@ -258,7 +276,7 @@ export default function VideoPlayerScreen() {
   };
 
   // Elimina video seleccionado con confirmación
-  const deleteVideo = async (videoPath: string) => {
+  const deleteVideo = async (videoPath) => {
     Alert.alert(
       "Eliminar Video",
       "¿Estás seguro de que quieres eliminar este video?",
@@ -321,7 +339,7 @@ export default function VideoPlayerScreen() {
     setPickerVisible(false);
   };
 
-  // Aplicar filtros seleccionados - esto es similar al de transcripciones
+  // Aplicar filtros seleccionados - CORREGIDO
   const applyFilter = () => {
     let filtered = [...videos];
 
@@ -332,24 +350,36 @@ export default function VideoPlayerScreen() {
 
         let matches = true;
         
+        // Para filtrar por año
         if (selectedYear) {
           matches = matches && dateParts.year === selectedYear;
         }
         
+        // Para filtrar por mes
         if (selectedMonth && matches) {
+          // Convertir nombre del mes a número (1-12)
           const monthIndex = months.indexOf(selectedMonth);
-          const monthFormatted = (monthIndex - 1).toString().padStart(2, "0");
-          matches = matches && dateParts.month === monthFormatted;
+          if (monthIndex > 0) { // Si no es "Todos"
+            // Formatear a 2 dígitos para comparar con el formato del archivo (01, 02, etc)
+            const monthNumber = monthIndex;
+            const monthFormatted = monthNumber.toString().padStart(2, "0");
+            console.log(`Comparando mes: archivo=${dateParts.month}, seleccionado=${monthFormatted}`);
+            matches = matches && dateParts.month === monthFormatted;
+          }
         }
         
-        if (selectedDay && matches) {
-          matches = matches && dateParts.day === selectedDay.padStart(2, "0");
+        // Para filtrar por día
+        if (selectedDay && matches && selectedDay !== "Todos") {
+          const dayFormatted = parseInt(selectedDay).toString().padStart(2, "0");
+          console.log(`Comparando día: archivo=${dateParts.day}, seleccionado=${dayFormatted}`);
+          matches = matches && dateParts.day === dayFormatted;
         }
         
         return matches;
       });
     }
 
+    console.log(`Filtrado completado: ${filtered.length} de ${videos.length} videos`);
     setFilteredVideos(filtered);
     setShowFilters(false);
 
@@ -380,7 +410,7 @@ export default function VideoPlayerScreen() {
   };
 
   // Convertir el nombre del archivo a una fecha legible
-  const formatFileName = (path: string) => {
+  const formatFileName = (path) => {
     const fileName = path.split("/").pop() || "";
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
     
@@ -429,7 +459,7 @@ export default function VideoPlayerScreen() {
   useEffect(() => {
     if (!player) return;
 
-    const updatePlayState = (payload: any) => {
+    const updatePlayState = (payload) => {
       console.log("Evento playingChange:", payload); 
       setIsPlaying(payload.isPlaying);
     };
@@ -447,7 +477,7 @@ export default function VideoPlayerScreen() {
   };
 
   // Renderizar cada tarjeta de video en la lista
-  const videoCard = ({ item }: { item: string }) => (
+  const videoCard = ({ item }) => (
     <Animated.View style={{
       opacity: fadeAnim,
       transform: [
