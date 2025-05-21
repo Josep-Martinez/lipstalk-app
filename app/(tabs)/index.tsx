@@ -24,6 +24,12 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Ellipse } from "react-native-svg";
 import Texto from "../../components/texto";
 import { FFmpegKit } from "ffmpeg-kit-react-native";
+import * as Speech from 'expo-speech';
+
+// Configura la IP y puerto de tu servidor
+const SERVER_IP = "192.168.0.197"; // Poner IP correcta de la maquina donde se aloja el modelo
+const SERVER_PORT = "8000";
+const SERVER_URL = `http://${SERVER_IP}:${SERVER_PORT}`;
 
 export default function HomeScreen() {
   const MAX_RECORDING_TIME = 20; // Tiempo máximo de grabación en segundos
@@ -44,6 +50,9 @@ export default function HomeScreen() {
   const TRANSCRIPTIONS_FILE =
     FileSystem.documentDirectory + "transcriptions.json";
   const [showGuideMessage, setShowGuideMessage] = useState(true);
+  // Nuevos estados para la funcionalidad de texto a voz
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Solicitar permisos de cámara y micrófono al cargar la app
   useEffect(() => {
@@ -67,6 +76,8 @@ export default function HomeScreen() {
     // Limpieza del timer al desmontar el componente
     return () => {
       if (timerInterval) clearInterval(timerInterval);
+      // Detener cualquier lectura en curso al salir de la pantalla
+      Speech.stop();
     };
   }, []);
 
@@ -102,6 +113,51 @@ export default function HomeScreen() {
         intermediates: true,
       });
     }
+  };
+
+  // Función para leer texto en voz alta
+  const speakText = async (text) => {
+    if (isMuted) return; // No leer si está silenciado
+    
+    try {
+      // Detener cualquier lectura previa
+      await Speech.stop();
+      
+      setIsSpeaking(true);
+      
+      Speech.speak(text, {
+        language: 'es',
+        rate: 0.9,
+        onDone: () => {
+          setIsSpeaking(false);
+        },
+        onError: (error) => {
+          console.error('Error al leer texto:', error);
+          setIsSpeaking(false);
+        }
+      });
+    } catch (error) {
+      console.error('Error iniciando la lectura:', error);
+      setIsSpeaking(false);
+    }
+  };
+
+  // Detener la lectura en curso
+  const stopSpeaking = async () => {
+    try {
+      await Speech.stop();
+      setIsSpeaking(false);
+    } catch (error) {
+      console.error('Error al detener lectura:', error);
+    }
+  };
+
+  // Alternar entre silencio y sonido
+  const toggleMute = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+    setIsMuted(!isMuted);
   };
 
   // Guardar la transcripción generada en local
@@ -144,18 +200,61 @@ export default function HomeScreen() {
       DeviceEventEmitter.emit("transcriptionSaved");
 
       console.log("✅ Transcripción guardada:", newTranscription);
+      
+      // Leer automáticamente el texto si no está silenciado
+      if (!isMuted) {
+        speakText(text);
+      }
     } catch (error) {
       console.error("Error guardando transcripción:", error);
       setIsLoading(false);
     }
   };
 
+  // Verificar si el servidor está disponible
+  const checkServerAvailability = async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos de timeout
+      
+      const response = await fetch(`${SERVER_URL}/`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        console.log("✅ Servidor disponible");
+        return true;
+      } else {
+        console.log("⚠️ Servidor responde pero con error:", response.status);
+        return false;
+      }
+    } catch (error) {
+      console.log("❌ Servidor no disponible:", error.message);
+      return false;
+    }
+  };
+
   // Enviar video al servidor para transcribir
   const sendVideoForTranscription = async (videoPath) => {
     try {
+      // Primero verificamos si el servidor está disponible
+      const serverAvailable = await checkServerAvailability();
+      
+      if (!serverAvailable) {
+        console.log("⚠️ Usando modo sin conexión porque el servidor no está disponible");
+        const textoError = "EL SERVIDOR NO SE HA CONECTADO CON EXITO, VUELVA A INTETARLO";
+        setTranscriptionText(textoError);
+        setTextoVisible(true);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Servidor disonible
       let uriToSend = videoPath;
       if (Platform.OS === "ios" && uriToSend.startsWith("file://")) {
-        uriToSend = uriToSend; // en iOS lo dejamos con file:// para fetch
+        uriToSend = uriToSend; // en iOS lo dejamos con file://
       }
 
       const formData = new FormData();
@@ -167,26 +266,53 @@ export default function HomeScreen() {
 
       console.log("🚀 Enviando vídeo a servidor:", uriToSend);
 
-      // Enviar al servidor local donde tengo corriendo el modelo
-      const response = await fetch("http://192.168.0.33:8000/transcribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        body: formData,
-      });
+      try {
+        // Configuramos un timeout para la petición
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+        
+        const response = await fetch(`${SERVER_URL}/transcribe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          body: formData,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
 
-      const data = await response.json();
-      console.log("✅ Transcripción recibida:", data.transcription);
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
 
-      // Actualiza el estado con la transcripción obtenida
-      setTranscriptionText(data.transcription);
+        const data = await response.json();
+        console.log("✅ Transcripción recibida:", data.transcription);
+
+        // Actualiza el estado con la transcripción obtenida
+        setTranscriptionText(data.transcription);
+        setTextoVisible(true);
+        setIsLoading(false);
+      } catch (serverError) {
+        console.log("⚠️ Error al procesar la transcripción:", serverError.message);
+        
+        // En caso de error de servidor, usamos un texto predefinido
+        const textoError = "EL SERVIDOR NO SE HA CONECTADO CON EXITO, VUELVA A INTETARLO";
+        console.log("✅ Usando texto predefinido:", textoError);
+        
+        // Actualiza el estado con la transcripción predefinida
+        setTranscriptionText(textoError);
+        setTextoVisible(true);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("❌ Error general en el proceso:", error);
+      
+      // En caso de error general, también usamos texto predefinido
+      const textoFijo = "PRUEBA DE AUDIO";
+      setTranscriptionText(textoFijo);
       setTextoVisible(true);
       setIsLoading(false);
-    } catch (error) {
-      console.error("❌ Error enviando vídeo:", error);
-      setIsLoading(false);
-      Alert.alert("Error", "No se pudo enviar el vídeo para transcribir.");
     }
   };
 
@@ -325,6 +451,15 @@ export default function HomeScreen() {
   const cameraHeight =
     windowHeight - tabBarHeight - headerHeight - statusBarHeight;
 
+  // Manejar cierre del modal de texto
+  const handleCloseTextModal = () => {
+    setTextoVisible(false);
+    // Al cerrar la ventana con el texto, detener la lectura si está en curso
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+  };
+
   return (
     // Contenedor principal de la pantalla
     <View style={styles.container}>
@@ -342,7 +477,7 @@ export default function HomeScreen() {
             {/* Componente para mostrar el texto transcrito */}
             <Texto
               visible={textoVisible}
-              onClose={() => setTextoVisible(false)}
+              onClose={handleCloseTextModal}
               generatedText={transcriptionText}
               onSaveText={handleSaveText}
             />
@@ -381,6 +516,19 @@ export default function HomeScreen() {
                 </Text>
               )}
             </View>
+
+            {/* Botón de silencio/sonido */}
+            <TouchableOpacity
+              style={styles.muteButton}
+              onPress={toggleMute}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isMuted ? "volume-mute" : "volume-high"}
+                size={24}
+                color="white"
+              />
+            </TouchableOpacity>
 
             {/* Barra de progreso para mostrar tiempo restante */}
             {isRecording && (
@@ -545,6 +693,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
+  },
+  muteButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 20,
   },
   emptySpace: {
     width: 50,
