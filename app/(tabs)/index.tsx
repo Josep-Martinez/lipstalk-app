@@ -264,7 +264,7 @@ export default function HomeScreen() {
         type: "video/mp4",
       } as any);
 
-      console.log("🚀 Enviando vídeo a servidor:", uriToSend);
+      console.log("Enviando vídeo a servidor:", uriToSend);
 
       try {
         // Configuramos un timeout para la petición
@@ -286,6 +286,7 @@ export default function HomeScreen() {
           throw new Error(`Error HTTP: ${response.status}`);
         }
 
+        //Transaccion recibida
         const data = await response.json();
         console.log("✅ Transcripción recibida:", data.transcription);
 
