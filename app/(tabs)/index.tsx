@@ -299,7 +299,7 @@ export default function HomeScreen() {
         
         // En caso de error de servidor, usamos un texto predefinido
         const textoError = "EL SERVIDOR NO SE HA CONECTADO CON EXITO, VUELVA A INTETARLO";
-        console.log("✅ Usando texto predefinido:", textoError);
+        console.log("Usando texto predefinido de error:", textoError);
         
         // Actualiza el estado con la transcripción predefinida
         setTranscriptionText(textoError);

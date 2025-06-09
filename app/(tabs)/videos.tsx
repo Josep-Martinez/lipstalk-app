@@ -306,7 +306,7 @@ export default function VideoPlayerScreen() {
     );
   };
 
-  // Mostrar selector modal (igual que en la pantalla de transcripciones)
+  // Mostrar selector modal del filtro
   const showPickerModal = (type) => {
     setPickerType(type);
     switch (type) {
